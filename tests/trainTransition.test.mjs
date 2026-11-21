@@ -9,6 +9,7 @@ import {
   resolveTravelDirection,
   runJourney,
 } from "../app/trainTransition.mjs";
+import { adjacentGameId, DIFFICULTY_DESTINATIONS, GAME_ORDER, gameRoute } from "../app/gameModel.mjs";
 
 test("journey phases run in the required order", () => {
   assert.deepEqual(createJourneyPlan().map((step) => step.phase), [
@@ -99,4 +100,32 @@ test("journeys do not mutate caller-owned difficulty state", async () => {
     wait: async () => {},
   });
   assert.equal(difficulty, "extreme");
+});
+
+test("homepage game registry begins with the existing Turf Capture trivia game", () => {
+  assert.equal(GAME_ORDER[0], "turf");
+  assert.deepEqual(GAME_ORDER, ["turf", "signal", "charlie"]);
+});
+
+test("side navigation advances one stop and stops at route boundaries", () => {
+  assert.equal(adjacentGameId("turf", 1), "signal");
+  assert.equal(adjacentGameId("signal", 1), "charlie");
+  assert.equal(adjacentGameId("charlie", 1), null);
+  assert.equal(adjacentGameId("turf", -1), null);
+  assert.equal(adjacentGameId("charlie", -1), "signal");
+});
+
+test("only the implemented trivia game has a gameplay route", () => {
+  assert.equal(gameRoute("turf"), "/play/turf");
+  assert.equal(gameRoute("signal"), null);
+  assert.equal(gameRoute("charlie"), null);
+});
+
+test("difficulty themes map to authentic requested destinations", () => {
+  assert.deepEqual(DIFFICULTY_DESTINATIONS, {
+    easy: { lineShort: "Green", color: "#00843D", destination: "BOSTON COLLEGE" },
+    medium: { lineShort: "Blue", color: "#003DA5", destination: "BOWDOIN" },
+    hard: { lineShort: "Orange", color: "#ED8B00", destination: "FOREST HILLS" },
+    extreme: { lineShort: "Red", color: "#DA291C", destination: "BRAINTREE" },
+  });
 });
