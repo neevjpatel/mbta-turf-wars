@@ -1,16 +1,17 @@
 export type JourneyPhase =
-  | "idle"
-  | "departure_warning"
+  | "idle_open"
   | "doors_closing"
-  | "accelerating"
+  | "doors_closed"
+  | "departing"
   | "in_transit"
-  | "decelerating"
+  | "arriving"
   | "arrived"
   | "doors_opening";
 
 export const JOURNEY_PHASES: Readonly<Record<Uppercase<JourneyPhase>, JourneyPhase>>;
-export const JOURNEY_TIMINGS: Readonly<Record<Exclude<JourneyPhase, "idle">, number>>;
-export function createJourneyPlan(options?: { reducedMotion?: boolean }): Array<{ phase: JourneyPhase; duration: number; commitDestination: boolean }>;
+export const JOURNEY_TIMINGS: Readonly<Record<Exclude<JourneyPhase, "idle_open">, number>>;
+export type JourneyStep = { phase: JourneyPhase; duration: number; commitDestination: boolean; waitsForDoor: boolean };
+export function createJourneyPlan(options?: { reducedMotion?: boolean }): JourneyStep[];
 export function canStartJourney(input: { phase: JourneyPhase; currentDestination: string; targetDestination: string; pendingDestination?: string | null }): boolean;
 export function resolveTravelDirection(currentIndex: number, targetIndex: number, requestedDirection?: number): -1 | 1;
 export function doorsAreOpen(phase: JourneyPhase): boolean;
@@ -24,4 +25,5 @@ export function runJourney(input: {
   onCommit: () => void;
   onRecover?: (error: unknown) => void;
   wait?: (milliseconds: number, signal?: AbortSignal) => Promise<void>;
+  waitForPhase?: (step: JourneyStep, signal?: AbortSignal) => Promise<void>;
 }): Promise<{ status: "completed" | "cancelled" }>;

@@ -16,7 +16,9 @@ import {
   isMotionPhase,
   resolveTravelDirection,
   runJourney,
+  waitForJourneyStep,
   type JourneyPhase,
+  type JourneyStep,
 } from "./trainTransition.mjs";
 
 function requestedStation(): GameId | null {
@@ -45,13 +47,14 @@ export default function TrainExperience() {
   const router = useRouter();
   const { difficulty, setDifficulty, muted, selectedGame, setSelectedGame } = useAppState();
   const [pendingGame, setPendingGame] = useState<GameId | null>(null);
-  const [phase, setPhase] = useState<JourneyPhase>(JOURNEY_PHASES.IDLE);
+  const [phase, setPhase] = useState<JourneyPhase>(JOURNEY_PHASES.IDLE_OPEN);
   const [direction, setDirection] = useState<-1 | 1>(1);
   const [reducedMotion, setReducedMotion] = useState(false);
   const [serviceIssue, setServiceIssue] = useState<string | null>(null);
   const navigationLocked = useRef(false);
   const mountedRef = useRef(true);
   const environmentRef = useRef<HTMLElement | null>(null);
+  const doorsRef = useRef<HTMLDivElement | null>(null);
   const journeyAbortRef = useRef<AbortController | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
   const distanceRef = useRef(0);
@@ -60,7 +63,7 @@ export default function TrainExperience() {
   const active = GAMES[activeIndex] ?? GAMES[0];
   const difficultyConfig = DIFFICULTIES[difficulty];
   const doorsOpen = doorsAreOpen(phase);
-  const interactionReady = phase === JOURNEY_PHASES.IDLE;
+  const interactionReady = phase === JOURNEY_PHASES.IDLE_OPEN;
 
   const playCue = useCallback((cue: JourneyPhase) => {
     if (muted) return;
@@ -70,7 +73,7 @@ export default function TrainExperience() {
       const context = !audioContextRef.current || audioContextRef.current.state === "closed" ? new AudioContextClass() : audioContextRef.current;
       audioContextRef.current = context;
       if (context.state === "suspended") void context.resume().catch(() => {});
-      if (cue === JOURNEY_PHASES.ACCELERATING) {
+      if (cue === JOURNEY_PHASES.DOORS_CLOSED) {
         const now = context.currentTime;
         const hornBus = context.createGain();
         const filter = context.createBiquadFilter();
@@ -94,12 +97,12 @@ export default function TrainExperience() {
         });
         return;
       }
-      const frequency = ({ departure_warning: 880, doors_closing: 190, decelerating: 125, arrived: 660, doors_opening: 330 } as Partial<Record<JourneyPhase, number>>)[cue];
+      const frequency = ({ doors_closing: 880, arriving: 125, arrived: 660, doors_opening: 330 } as Partial<Record<JourneyPhase, number>>)[cue];
       if (!frequency) return;
       const oscillator = context.createOscillator();
       const gain = context.createGain();
       const now = context.currentTime;
-      oscillator.type = cue === JOURNEY_PHASES.DEPARTURE_WARNING ? "sine" : "triangle";
+      oscillator.type = cue === JOURNEY_PHASES.DOORS_CLOSING ? "sine" : "triangle";
       oscillator.frequency.setValueAtTime(frequency, now);
       gain.gain.setValueAtTime(.0001, now);
       gain.gain.exponentialRampToValueAtTime(.035, now + .025);
@@ -111,6 +114,44 @@ export default function TrainExperience() {
       // Decorative audio must never interrupt navigation.
     }
   }, [muted]);
+
+  const waitForPhase = useCallback((step: JourneyStep, signal?: AbortSignal) => {
+    if (!step.waitsForDoor || reducedMotion) return waitForJourneyStep(step.duration, signal);
+    const panels = Array.from(doorsRef.current?.querySelectorAll<HTMLElement>(".door-panel") ?? []);
+    if (panels.length !== 2) return waitForJourneyStep(step.duration, signal);
+    return new Promise<void>((resolve, reject) => {
+      const finished = new Set<EventTarget>();
+      let settled = false;
+      const cleanup = () => {
+        panels.forEach((panel) => panel.removeEventListener("transitionend", onTransitionEnd));
+        signal?.removeEventListener("abort", onAbort);
+        window.clearTimeout(fallback);
+      };
+      const settle = () => {
+        if (settled) return;
+        settled = true;
+        cleanup();
+        resolve();
+      };
+      const onTransitionEnd = (event: TransitionEvent) => {
+        if (event.propertyName !== "transform") return;
+        const target = event.currentTarget ?? event.target;
+        if (!target) return;
+        finished.add(target);
+        if (finished.size === panels.length) settle();
+      };
+      const onAbort = () => {
+        if (settled) return;
+        settled = true;
+        cleanup();
+        reject(new DOMException("Journey cancelled", "AbortError"));
+      };
+      panels.forEach((panel) => panel.addEventListener("transitionend", onTransitionEnd));
+      signal?.addEventListener("abort", onAbort, { once: true });
+      const fallback = window.setTimeout(settle, step.duration + 300);
+      if (signal?.aborted) onAbort();
+    });
+  }, [reducedMotion]);
 
   const commitGame = useCallback((game: GameId, historyMode: "push" | "replace" | "none") => {
     setSelectedGame(game);
@@ -136,15 +177,16 @@ export default function TrainExperience() {
         onPhase: (nextPhase) => { setPhase(nextPhase); playCue(nextPhase); },
         onCommit: () => commitGame(game, historyMode),
         onRecover: (error) => { if ((error as { name?: string })?.name !== "AbortError") setServiceIssue("Service interruption. The train returned to a safe stop."); },
+        waitForPhase,
       });
     } catch {
       setServiceIssue("Service interruption. Please select the stop again.");
     } finally {
       navigationLocked.current = false;
-      if (mountedRef.current) { setPhase(JOURNEY_PHASES.IDLE); setPendingGame(null); }
+      if (mountedRef.current) { setPhase(JOURNEY_PHASES.IDLE_OPEN); setPendingGame(null); }
       if (journeyAbortRef.current === controller) journeyAbortRef.current = null;
     }
-  }, [activeIndex, commitGame, pendingGame, phase, playCue, reducedMotion, selectedGame]);
+  }, [activeIndex, commitGame, pendingGame, phase, playCue, reducedMotion, selectedGame, waitForPhase]);
 
   const navigateRelative = useCallback((offset: -1 | 1) => {
     const next = adjacentGameId(selectedGame, offset);
@@ -184,8 +226,8 @@ export default function TrainExperience() {
       const elapsed = now - phaseStarted;
       previousTime = now;
       let speed = 720;
-      if (phase === JOURNEY_PHASES.ACCELERATING) speed *= Math.pow(Math.min(elapsed / JOURNEY_TIMINGS.accelerating, 1), 3);
-      if (phase === JOURNEY_PHASES.DECELERATING) speed *= Math.pow(1 - Math.min(elapsed / JOURNEY_TIMINGS.decelerating, 1), 3);
+      if (phase === JOURNEY_PHASES.DEPARTING) speed *= Math.pow(Math.min(elapsed / JOURNEY_TIMINGS.departing, 1), 3);
+      if (phase === JOURNEY_PHASES.ARRIVING) speed *= Math.pow(1 - Math.min(elapsed / JOURNEY_TIMINGS.arriving, 1), 3);
       distanceRef.current += speed * delta * direction;
       const width = Math.max(window.innerWidth, 1);
       const offset = (factor: number) => `${-(((distanceRef.current * factor) % width + width) % width)}px`;
@@ -223,18 +265,18 @@ export default function TrainExperience() {
   const journeyMessage = useMemo(() => {
     const next = GAMES.find((game) => game.id === pendingGame);
     return ({
-      departure_warning: "STAND CLEAR · DEPARTURE READY",
       doors_closing: "DOORS CLOSING",
-      accelerating: "DEPARTING",
+      doors_closed: "DOORS CLOSED · HORN",
+      departing: "DEPARTING",
       in_transit: `NEXT STOP · ${next?.name ?? active.name}`,
-      decelerating: "APPROACHING STATION",
+      arriving: "APPROACHING STATION",
       arrived: `ARRIVING · ${active.name}`,
       doors_opening: `WELCOME · ${active.name}`,
     } as Partial<Record<JourneyPhase, string>>)[phase] ?? `CURRENT STOP · ${active.name}`;
   }, [active.name, pendingGame, phase]);
 
   return (
-    <main className={`experience station-selector phase-${phase} direction-${direction > 0 ? "forward" : "reverse"}`} data-journey-phase={phase} data-selected-game={selectedGame} style={{ "--line-color": difficultyConfig.color, "--line-glow": `${difficultyConfig.color}66` } as CSSProperties}>
+    <main className={`experience station-selector phase-${phase} direction-${direction > 0 ? "forward" : "reverse"}`} data-journey-phase={phase} data-selected-game={selectedGame} data-reduced-motion={reducedMotion} style={{ "--line-color": difficultyConfig.color, "--line-glow": `${difficultyConfig.color}66` } as CSSProperties}>
       <section className="station-controls" aria-label="Game stop and difficulty controls">
         <div className="route-progress game-route-progress">
           {GAMES.map((game, index) => <button type="button" key={game.id} className={selectedGame === game.id ? "active" : ""} onClick={() => void travelTo(game.id, index < activeIndex ? -1 : 1)} disabled={!interactionReady}><span className="route-node">{index + 1}</span><span>{game.shortName}</span></button>)}
@@ -260,7 +302,7 @@ export default function TrainExperience() {
             </aside>
             <div className="doorway-frame">
               <div className="game-viewport"><GameStopPanel game={active} disabled={!interactionReady} onPlay={() => { if (active.route) router.push(active.route); }} /></div>
-              <div className={`train-doors ${doorsOpen ? "open" : "closed"}`} data-door-state={doorsOpen ? "open" : "closed"} aria-hidden="true">
+              <div ref={doorsRef} className={`train-doors ${doorsOpen ? "open" : "closed"}`} data-door-state={doorsOpen ? "open" : "closed"} aria-hidden="true">
                 <div className="door-panel door-left"><span className="door-warning-light" /><span className="door-window"><i /></span><span className="door-seam-label">STAND CLEAR</span><span className="door-handle" /><span className="door-rivets" /></div>
                 <div className="door-panel door-right"><span className="door-warning-light" /><span className="door-window"><i /></span><span className="door-seam-label">OF CLOSING DOORS</span><span className="door-handle" /><span className="door-rivets" /></div>
               </div>
