@@ -5,8 +5,8 @@ import { AppStateProvider } from "./AppState";
 import GlobalHeader from "./GlobalHeader";
 
 export const metadata: Metadata = {
-  title: "MBTA Turf Wars",
-  description: "Ride the challenge line and capture Boston's transit turf.",
+  title: "T Games | Boston Transit Games",
+  description: "Play Boston transit mini-games and explore the MBTA.",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
