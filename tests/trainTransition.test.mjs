@@ -9,7 +9,7 @@ import {
   resolveTravelDirection,
   runJourney,
 } from "../app/trainTransition.mjs";
-import { adjacentGameId, DIFFICULTY_DESTINATIONS, GAME_ORDER, gameRoute } from "../app/gameModel.mjs";
+import { adjacentGameId, DIFFICULTY_DESTINATIONS, GAME_LABELS, GAME_ORDER, gameRoute } from "../app/gameModel.mjs";
 
 test("journey phases run in the required order", () => {
   assert.deepEqual(createJourneyPlan().map((step) => step.phase), [
@@ -102,9 +102,17 @@ test("journeys do not mutate caller-owned difficulty state", async () => {
   assert.equal(difficulty, "extreme");
 });
 
-test("homepage game registry begins with the existing Turf Capture trivia game", () => {
+test("homepage game registry begins with the existing MBTA Trivia game", () => {
   assert.equal(GAME_ORDER[0], "turf");
   assert.deepEqual(GAME_ORDER, ["turf", "signal", "charlie"]);
+});
+
+test("game stops use the finalized frontend labels", () => {
+  assert.deepEqual(GAME_LABELS, {
+    turf: "MBTA Trivia",
+    signal: "T Guesser",
+    charlie: "Stationle",
+  });
 });
 
 test("side navigation advances one stop and stops at route boundaries", () => {

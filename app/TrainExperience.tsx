@@ -67,9 +67,9 @@ export default function TrainExperience() {
     try {
       const AudioContextClass = window.AudioContext || (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
       if (!AudioContextClass) return;
-      const context = audioContextRef.current ?? new AudioContextClass();
+      const context = !audioContextRef.current || audioContextRef.current.state === "closed" ? new AudioContextClass() : audioContextRef.current;
       audioContextRef.current = context;
-      void context.resume();
+      if (context.state === "suspended") void context.resume().catch(() => {});
       if (cue === JOURNEY_PHASES.ACCELERATING) {
         const now = context.currentTime;
         const hornBus = context.createGain();
@@ -166,7 +166,9 @@ export default function TrainExperience() {
     return () => {
       mountedRef.current = false;
       journeyAbortRef.current?.abort();
-      if (audioContextRef.current && audioContextRef.current.state !== "closed") void audioContextRef.current.close();
+      const context = audioContextRef.current;
+      audioContextRef.current = null;
+      if (context && context.state !== "closed") void context.close().catch(() => {});
     };
   }, []);
 
@@ -247,7 +249,6 @@ export default function TrainExperience() {
           <div className="train-roof">
             <div className="roof-vents" aria-hidden="true"><i /><i /><i /></div>
             <span className="car-number">01872</span>
-            <div className="destination-display authentic-destination" aria-label={`${difficultyConfig.line} destination ${difficultyConfig.destination}`}><span className="led-dot" /><strong>{difficultyConfig.destination}</strong><small>{difficultyConfig.line.toUpperCase()} · {difficultyConfig.label.toUpperCase()}</small></div>
             <span className="service-badge">BOSTON</span>
           </div>
           <div className="train-stripe" />
@@ -265,7 +266,8 @@ export default function TrainExperience() {
               </div>
             </div>
             <aside className="train-side right-side cab-side">
-              <div className="subway-window cab-window" aria-label="Illustrated train operator in the front cab"><div className="cab-interior"><span className="operator-cap" /><span className="operator-head"><i /></span><span className="operator-body" /><span className="operator-arm" /><span className="cab-controls" /></div><span className="window-reflection" /><span className="passing-light one" /><span className="passing-light two" /></div>
+              <div className="destination-display authentic-destination cab-destination" aria-label={`${difficultyConfig.line} destination ${difficultyConfig.destination}`}><span className="led-dot" /><strong>{difficultyConfig.destination}</strong><small>{difficultyConfig.line.toUpperCase()} · {difficultyConfig.label.toUpperCase()}</small></div>
+              <div className="subway-window cab-window" aria-label="Illustrated train operator in the front cab"><div className="cab-interior"><span className="operator-cap" /><span className="operator-head"><i /></span><span className="operator-neck" /><span className="operator-body"><i className="operator-collar collar-left" /><i className="operator-collar collar-right" /></span><span className="operator-arm" /><span className="cab-controls" /></div><span className="window-reflection" /><span className="passing-light one" /><span className="passing-light two" /></div>
               <span className="cab-headlight" aria-hidden="true" />
               <button type="button" className="train-nav-button" onClick={() => navigateRelative(1)} disabled={!interactionReady || activeIndex === GAMES.length - 1} aria-keyshortcuts="ArrowRight"><span><small>NEXT STOP</small><strong>{activeIndex < GAMES.length - 1 ? GAMES[activeIndex + 1].shortName : "End of line"}</strong></span><span className="nav-symbol">›</span></button>
             </aside>
