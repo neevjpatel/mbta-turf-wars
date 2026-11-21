@@ -61,7 +61,11 @@ function HomeSelection({ onTravel, disabled }: { onTravel: (destination: Destina
       <div className="destination-board" aria-label="Game destinations">
         {DESTINATIONS.slice(1).map((item) => (
           <button type="button" key={item.id} className={`destination-row ${selected === item.id ? "is-selected" : ""}`} onClick={() => setSelected(item.id)} aria-pressed={selected === item.id}>
-            <span className="destination-number">{item.marker}</span>
+            <span className={`game-art game-art-${item.id}`} aria-hidden="true">
+              {item.id === "turf" && <><i className="map-river" /><i className="map-route route-a" /><i className="map-route route-b" /><b>T</b></>}
+              {item.id === "signal" && <><i className="signal-post" /><i className="signal-lamp red" /><i className="signal-lamp amber" /><i className="signal-lamp green" /></>}
+              {item.id === "charlie" && <><i className="charlie-card" /><i className="gate-arm" /></>}
+            </span>
             <span className="destination-copy"><strong>{item.name}</strong><small>{item.kicker}</small></span>
             <span className={`service-pill ${item.status}`}>{item.status === "open" ? "PLAYABLE" : "COMING SOON"}</span>
           </button>
@@ -69,7 +73,7 @@ function HomeSelection({ onTravel, disabled }: { onTravel: (destination: Destina
       </div>
       <div className="selection-detail">
         <div><span className="detail-label">Selected destination</span><strong>{destination.name}</strong><p>{destination.description}</p></div>
-        <button type="button" className="board-button" disabled={disabled} onClick={() => onTravel(destination.id, 1)}>{destination.status === "open" ? "Let's ride" : "Visit station"}</button>
+        <button type="button" className="board-button" disabled={disabled} onClick={() => onTravel(destination.id, 1)}><span>{destination.status === "open" ? "Let's ride" : "Visit station"}</span><i aria-hidden="true" /></button>
       </div>
     </section>
   );
@@ -118,10 +122,33 @@ export default function TrainExperience() {
       const context = audioContextRef.current ?? new AudioContextClass();
       audioContextRef.current = context;
       void context.resume();
+      if (cue === JOURNEY_PHASES.ACCELERATING) {
+        const now = context.currentTime;
+        const hornBus = context.createGain();
+        const hornFilter = context.createBiquadFilter();
+        hornFilter.type = "lowpass";
+        hornFilter.frequency.setValueAtTime(1050, now);
+        hornBus.gain.setValueAtTime(.0001, now);
+        hornBus.gain.exponentialRampToValueAtTime(.075, now + .07);
+        hornBus.gain.setValueAtTime(.075, now + .26);
+        hornBus.gain.exponentialRampToValueAtTime(.0001, now + .72);
+        hornBus.connect(hornFilter).connect(context.destination);
+        [146.8, 185, 220].forEach((frequency, index) => {
+          const oscillator = context.createOscillator();
+          const voice = context.createGain();
+          oscillator.type = index === 0 ? "sawtooth" : "triangle";
+          oscillator.frequency.setValueAtTime(frequency, now);
+          oscillator.frequency.linearRampToValueAtTime(frequency * .985, now + .72);
+          voice.gain.value = index === 0 ? .42 : .28;
+          oscillator.connect(voice).connect(hornBus);
+          oscillator.start(now);
+          oscillator.stop(now + .74);
+        });
+        return;
+      }
       const frequencies: Partial<Record<JourneyPhase, number>> = {
         departure_warning: 880,
         doors_closing: 190,
-        accelerating: 82,
         decelerating: 125,
         arrived: 660,
         doors_opening: 330,
@@ -133,7 +160,6 @@ export default function TrainExperience() {
       const now = context.currentTime;
       oscillator.type = cue === JOURNEY_PHASES.DEPARTURE_WARNING ? "sine" : "triangle";
       oscillator.frequency.setValueAtTime(frequency, now);
-      if (cue === JOURNEY_PHASES.ACCELERATING) oscillator.frequency.exponentialRampToValueAtTime(125, now + .35);
       gain.gain.setValueAtTime(.0001, now);
       gain.gain.exponentialRampToValueAtTime(.045, now + .025);
       gain.gain.exponentialRampToValueAtTime(.0001, now + .18);
@@ -327,6 +353,7 @@ export default function TrainExperience() {
         <div className="train-track">
           <div className="subway-train">
             <div className="train-roof">
+              <div className="roof-vents" aria-hidden="true"><i /><i /><i /></div>
               <span className="car-number">01872</span>
               <div className="destination-display" role="status" aria-live="polite"><span className="led-dot" /><strong>{displayMessage}</strong><small>{difficultyConfig.line.toUpperCase()} · {difficultyConfig.label.toUpperCase()}</small></div>
               <span className="service-badge">BOSTON</span>
@@ -335,6 +362,7 @@ export default function TrainExperience() {
             <div className="train-body">
               <aside className="train-side left-side">
                 <div className="subway-window" aria-hidden="true"><span className="window-city" /><span className="passing-light one" /><span className="passing-light two" /></div>
+                <span className="train-roundel" aria-hidden="true">T</span>
                 <button type="button" className="train-nav-button" onClick={() => navigateRelative(-1)} disabled={!interactionReady} aria-keyshortcuts="ArrowLeft"><span className="nav-symbol">‹</span><span><small>PREVIOUS STOP</small><strong>{DESTINATIONS[(activeIndex - 1 + DESTINATIONS.length) % DESTINATIONS.length].shortName}</strong></span></button>
               </aside>
               <div className="doorway-frame">
@@ -344,16 +372,17 @@ export default function TrainExperience() {
                   {(activeDestination === "signal" || activeDestination === "charlie") && <UnavailableGame destination={active} />}
                 </div>
                 <div className={`train-doors ${doorsOpen ? "open" : "closed"}`} data-door-state={doorsOpen ? "open" : "closed"} aria-hidden="true">
-                  <div className="door-panel door-left"><span className="door-window"><i /></span><span className="door-seam-label">STAND CLEAR</span><span className="door-handle" /></div>
-                  <div className="door-panel door-right"><span className="door-window"><i /></span><span className="door-seam-label">OF CLOSING DOORS</span><span className="door-handle" /></div>
+                  <div className="door-panel door-left"><span className="door-warning-light" /><span className="door-window"><i /></span><span className="door-seam-label">STAND CLEAR</span><span className="door-handle" /><span className="door-rivets" /></div>
+                  <div className="door-panel door-right"><span className="door-warning-light" /><span className="door-window"><i /></span><span className="door-seam-label">OF CLOSING DOORS</span><span className="door-handle" /><span className="door-rivets" /></div>
                 </div>
               </div>
               <aside className="train-side right-side">
                 <div className="subway-window" aria-hidden="true"><span className="window-city" /><span className="passing-light one" /><span className="passing-light two" /></div>
+                <span className="train-roundel" aria-hidden="true">T</span>
                 <button type="button" className="train-nav-button" onClick={() => navigateRelative(1)} disabled={!interactionReady} aria-keyshortcuts="ArrowRight"><span><small>NEXT STOP</small><strong>{DESTINATIONS[(activeIndex + 1) % DESTINATIONS.length].shortName}</strong></span><span className="nav-symbol">›</span></button>
               </aside>
             </div>
-            <div className="train-undercarriage"><span /><span /><span /><span /></div>
+            <div className="train-undercarriage" aria-hidden="true"><i className="bogie bogie-left" /><span /><span /><b className="equipment-box" /><span /><span /><i className="bogie bogie-right" /></div>
           </div>
         </div>
         <div className="platform-edge" aria-hidden="true"><span>STAND BEHIND YELLOW LINE</span><span>STAND BEHIND YELLOW LINE</span><span>STAND BEHIND YELLOW LINE</span></div>
