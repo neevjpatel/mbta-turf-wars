@@ -1,38 +1,27 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { MapContainer, TileLayer, CircleMarker, Popup } from "react-leaflet";
+import { MapContainer, TileLayer, CircleMarker, Popup, useMap } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
-import { INITIAL_STOPS, SCHOOL_COLORS, StopData } from "./mbtaData";
+import { SCHOOL_COLORS, StopData } from "./mbtaData";
 
 export default function BostonMap({
   selectedSchool,
   isDelayed,
   onStartClaim,
-  claimedStopTrigger,
+  stops,
+  isActive,
 }: {
   selectedSchool: string;
   isDelayed: boolean;
   onStartClaim: (stop: StopData) => void;
-  claimedStopTrigger: { stopId: string; school: string; pointsAdded: number } | null;
+  stops: StopData[];
+  isActive: boolean;
 }) {
-  const [stops, setStops] = useState<StopData[]>(INITIAL_STOPS);
-  const [trains, setTrains] = useState<any[]>([]);
-
-  useEffect(() => {
-    if (!claimedStopTrigger) return;
-    setStops((prev) =>
-      prev.map((stop) =>
-        stop.id === claimedStopTrigger.stopId
-          ? {
-              ...stop,
-              owner: claimedStopTrigger.school,
-              points: stop.points + claimedStopTrigger.pointsAdded,
-            }
-          : stop
-      )
-    );
-  }, [claimedStopTrigger]);
+  const [trains, setTrains] = useState<Array<{
+    id: string;
+    attributes: { latitude?: number; longitude?: number; current_status?: string };
+  }>>([]);
 
   useEffect(() => {
     const fetchTrains = async () => {
@@ -58,6 +47,7 @@ export default function BostonMap({
       zoom={13}
       className="h-full w-full rounded-xl z-0"
     >
+      <MapResizeWatcher isActive={isActive} />
       <TileLayer
         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
@@ -119,4 +109,20 @@ export default function BostonMap({
       })}
     </MapContainer>
   );
+}
+
+function MapResizeWatcher({ isActive }: { isActive: boolean }) {
+  const map = useMap();
+
+  useEffect(() => {
+    if (!isActive) return;
+    const frame = window.requestAnimationFrame(() => map.invalidateSize());
+    const timeout = window.setTimeout(() => map.invalidateSize(), 350);
+    return () => {
+      window.cancelAnimationFrame(frame);
+      window.clearTimeout(timeout);
+    };
+  }, [isActive, map]);
+
+  return null;
 }
