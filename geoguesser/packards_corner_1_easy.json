@@ -1,0 +1,9 @@
+{
+  "id": "packards_corner_1_easy",
+  "location": "packards_corner",
+  "number": 1,
+  "difficulty": "easy",
+  "image": "packards_corner_1_easy.png",
+  "coordinates": null,
+  "correctStationId": "place-brico"
+}

@@ -1,0 +1,9 @@
+{
+  "id": "south_station_3_medium",
+  "location": "south_station",
+  "number": 3,
+  "difficulty": "medium",
+  "image": "south_station_3_medium.png",
+  "coordinates": null,
+  "correctStationId": "place-sstat"
+}
