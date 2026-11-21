@@ -1,11 +1,11 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import "./globals.css";
-import { AppStateProvider } from "./AppState";
-import GlobalHeader from "./GlobalHeader";
+import { AppStateProvider } from "./_state/app-state";
+import GlobalHeader from "./_components/layout/global-header";
 
 export const metadata: Metadata = {
-  title: "T Games | Boston Transit Games",
+  title: "MBTA Mini Games | Boston Transit Games",
   description: "Play Boston transit mini-games and explore the MBTA.",
 };
 
