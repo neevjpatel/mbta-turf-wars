@@ -702,18 +702,18 @@ button:focus-visible { outline: 3px solid #fff; outline-offset: 3px; }
 
 .journey-status { position: absolute; z-index: 6; top: 8px; left: 50%; width: min(360px, 34vw); padding: 5px 8px; transform: translateX(-50%); opacity: 0; color: #e8edef; background: #10161de8; border: 1px solid #ffffff28; font-size: 9px; font-weight: 800; letter-spacing: .15em; text-align: center; text-transform: uppercase; transition: opacity 120ms ease; }
 .journey-status i { position: absolute; left: 0; bottom: -1px; width: 0; height: 2px; background: var(--line-color); }
-.experience:not(.phase-idle) .journey-status { opacity: 1; }
-.experience:not(.phase-idle) .journey-status i { animation: journey-progress 2.45s linear both; }
+.experience:not(.phase-idle_open) .journey-status { opacity: 1; }
+.experience:not(.phase-idle_open) .journey-status i { animation: journey-progress 2.94s linear both; }
 @keyframes journey-progress { to { width: 100%; } }
 
 .train-track { z-index: 10; top: 20% !important; bottom: 8% !important; }
 .subway-train { grid-template-rows: 48px 10px minmax(0, 1fr) 18px; filter: brightness(var(--travel-light)) drop-shadow(0 12px 12px #0007); transform: translate3d(0, 0, 0); will-change: transform, filter; }
-.phase-departure_warning .subway-train { animation: departure-ready 150ms ease-out both; }
-.phase-accelerating.direction-forward .subway-train { animation: train-accelerate-forward 400ms cubic-bezier(.55, .04, .88, .58) both; }
-.phase-accelerating.direction-reverse .subway-train { animation: train-accelerate-reverse 400ms cubic-bezier(.55, .04, .88, .58) both; }
+.phase-doors_closed .subway-train { animation: departure-ready 80ms ease-out both; }
+.phase-departing.direction-forward .subway-train { animation: train-accelerate-forward 400ms cubic-bezier(.55, .04, .88, .58) both; }
+.phase-departing.direction-reverse .subway-train { animation: train-accelerate-reverse 400ms cubic-bezier(.55, .04, .88, .58) both; }
 .phase-in_transit .subway-train { animation: train-suspension 150ms ease-in-out infinite alternate; }
-.phase-decelerating.direction-forward .subway-train { animation: train-brake-forward 400ms cubic-bezier(.12, .72, .24, 1) both; }
-.phase-decelerating.direction-reverse .subway-train { animation: train-brake-reverse 400ms cubic-bezier(.12, .72, .24, 1) both; }
+.phase-arriving.direction-forward .subway-train { animation: train-brake-forward 400ms cubic-bezier(.12, .72, .24, 1) both; }
+.phase-arriving.direction-reverse .subway-train { animation: train-brake-reverse 400ms cubic-bezier(.12, .72, .24, 1) both; }
 .phase-arrived .subway-train { animation: arrival-settle 100ms ease-out both; }
 @keyframes departure-ready { 0% { transform: translate3d(0,0,0); } 55% { transform: translate3d(0,-2px,0); } 100% { transform: translate3d(0,0,0); } }
 @keyframes train-accelerate-forward { 0% { transform: translate3d(0,0,0); } 48% { transform: translate3d(-8px,1px,0); } 100% { transform: translate3d(-3px,0,0); } }
@@ -725,15 +725,15 @@ button:focus-visible { outline: 3px solid #fff; outline-offset: 3px; }
 
 .train-undercarriage { display: flex; align-items: flex-start; justify-content: space-around; padding-inline: 12%; background: transparent; border: 0; overflow: hidden; }
 .train-undercarriage span { width: 30px; height: 30px; margin-top: -12px; border: 5px solid #424b4f; border-radius: 50%; background: conic-gradient(#161c1f 0 12%, #7e898e 12% 18%, #161c1f 18% 37%, #7e898e 37% 43%, #161c1f 43% 62%, #7e898e 62% 68%, #161c1f 68% 87%, #7e898e 87% 93%, #161c1f 93%); }
-.phase-accelerating .train-undercarriage span { animation: wheel-spin 360ms linear infinite; }
+.phase-departing .train-undercarriage span { animation: wheel-spin 360ms linear infinite; }
 .phase-in_transit .train-undercarriage span { animation: wheel-spin 180ms linear infinite; }
-.phase-decelerating .train-undercarriage span { animation: wheel-spin 360ms linear infinite; }
+.phase-arriving .train-undercarriage span { animation: wheel-spin 360ms linear infinite; }
 .direction-reverse .train-undercarriage span { animation-direction: reverse; }
 @keyframes wheel-spin { to { transform: rotate(1turn); } }
 
 .subway-window { background: linear-gradient(#7595a4 0 42%, #42555c 42% 46%, #374a40 46% 66%, #252b2e 66%); }
 .window-city { position: absolute; inset: 24% -120% 20% 0; opacity: .72; background: repeating-linear-gradient(90deg, #273944 0 26px, transparent 26px 34px, #4f342e 34px 62px, transparent 62px 72px); transform: translate3d(var(--parallax-near), 0, 0); will-change: transform; }
-.phase-accelerating .subway-window, .phase-in_transit .subway-window, .phase-decelerating .subway-window { box-shadow: inset 0 0 20px #091014aa; }
+.phase-departing .subway-window, .phase-in_transit .subway-window, .phase-arriving .subway-window { box-shadow: inset 0 0 20px #091014aa; }
 
 .train-doors::before { content: ""; position: absolute; z-index: 4; top: 0; left: 0; right: 0; height: 8px; background: repeating-linear-gradient(90deg, #343b3e 0 8px, #697276 8px 15px); box-shadow: 0 2px 4px #0009; }
 .door-panel { background: repeating-linear-gradient(92deg, #8f979a 0 2px, #c7cccd 3px 8px, #aeb5b7 9px 13px); box-shadow: inset 0 0 16px #fff6, inset 0 -18px 22px #0003, 0 0 8px #0008; will-change: transform; }
@@ -745,15 +745,10 @@ button:focus-visible { outline: 3px solid #fff; outline-offset: 3px; }
 .door-window i { background: linear-gradient(118deg, #ffffff36 0 4%, transparent 5% 54%, #ffffff1f 55% 59%, transparent 60%); }
 .door-seam-label { display: block; color: #293134; }
 .door-handle { display: block; }
-.train-doors .door-panel { transition: none; }
-.phase-doors_closing .door-left { animation: door-close-left 450ms cubic-bezier(.46, .02, .22, 1) both; }
-.phase-doors_closing .door-right { animation: door-close-right 450ms cubic-bezier(.46, .02, .22, 1) both; }
-.phase-doors_opening .door-left { animation: door-open-left 450ms cubic-bezier(.44, 0, .18, 1) both; }
-.phase-doors_opening .door-right { animation: door-open-right 450ms cubic-bezier(.44, 0, .18, 1) both; }
-@keyframes door-close-left { 0% { transform: translate3d(-102%,0,0); } 82% { transform: translate3d(0,0,0); } 92% { transform: translate3d(-.7%,0,0); } 100% { transform: translate3d(0,0,0); } }
-@keyframes door-close-right { 0% { transform: translate3d(102%,0,0); } 82% { transform: translate3d(0,0,0); } 92% { transform: translate3d(.7%,0,0); } 100% { transform: translate3d(0,0,0); } }
-@keyframes door-open-left { 0%, 8% { transform: translate3d(0,0,0); } 100% { transform: translate3d(-102%,0,0); } }
-@keyframes door-open-right { 0%, 8% { transform: translate3d(0,0,0); } 100% { transform: translate3d(102%,0,0); } }
+.train-doors .door-panel { transition: transform 680ms cubic-bezier(.4, 0, .2, 1); transform: translate3d(0, 0, 0); backface-visibility: hidden; }
+.train-doors.open .door-left { transform: translate3d(-102%, 0, 0); }
+.train-doors.open .door-right { transform: translate3d(102%, 0, 0); }
+.train-doors.closed .door-panel { transform: translate3d(0, 0, 0); }
 
 .audio-toggle { min-width: 68px; }
 .audio-toggle::before { content: ""; display: inline-block; width: 7px; height: 7px; margin-right: 6px; border: 1px solid currentColor; border-radius: 50%; background: currentColor; opacity: .5; }
@@ -875,7 +870,7 @@ body { background: #132430; font-family: Inter, "Avenir Next", "Segoe UI", Arial
 .door-handle { display: block; width: 8px; height: 62px; border: 2px solid #172327; background: #6d7c7c; }
 .door-warning-light { position: absolute; z-index: 5; top: 18px; width: 13px; height: 13px; border: 3px solid #263438; border-radius: 50%; background: #5c6a69; box-shadow: inset 0 -2px #0005; }
 .door-left .door-warning-light { right: 18px; }.door-right .door-warning-light { left: 18px; }
-.phase-departure_warning .door-warning-light, .phase-doors_closing .door-warning-light { background: #f34c35; box-shadow: 0 0 14px #ff432c, inset 0 -2px #8e160d; animation: warning-pulse 180ms steps(2, end) infinite; }
+.phase-doors_closing .door-warning-light { background: #f34c35; box-shadow: 0 0 14px #ff432c, inset 0 -2px #8e160d; animation: warning-pulse 180ms steps(2, end) infinite; }
 @keyframes warning-pulse { 50% { background: #ffd45c; box-shadow: 0 0 15px #ffbc2c; } }
 .door-rivets { position: absolute; left: 9px; right: 9px; bottom: 10px; height: 5px; background: radial-gradient(circle, #4d5b5d 0 2px, transparent 2.5px) 0 0 / 26px 5px repeat-x; }
 
@@ -985,7 +980,7 @@ body { display: grid; grid-template-rows: 64px minmax(0, 1fr); }
 .operator-arm { position: absolute; z-index: 2; left: 58%; top: 59%; width: 58px; height: 18px; border: 3px solid #142129; border-radius: 999px; background: #315a72; transform: rotate(18deg); transform-origin: left center; }.cab-controls { position: absolute; z-index: 4; left: 9%; right: 5%; bottom: 0; height: 25%; border: 3px solid #101b20; border-radius: 10px 10px 0 0; background: #46575b; }.cab-controls::before { content: ""; position: absolute; inset: 7px; background: radial-gradient(circle at 20% 50%, #e0b635 0 3px, transparent 4px), radial-gradient(circle at 45% 50%, #d74b3d 0 3px, transparent 4px), radial-gradient(circle at 70% 50%, #5bc978 0 3px, transparent 4px); }
 .window-reflection { position: absolute; z-index: 6; inset: 0; background: linear-gradient(128deg, #ffffff65 0 5%, transparent 6% 58%, #ffffff2b 59% 64%, transparent 65%); pointer-events: none; }
 .cab-headlight { position: absolute; z-index: 5; right: 17px; bottom: 59px; width: 25px; height: 17px; border: 3px solid #18262b; border-radius: 50%; background: #fff1a8; box-shadow: 0 0 18px #ffe99d; }
-.phase-in_transit .operator-body { animation: operator-ride 180ms ease-in-out infinite alternate; }.phase-accelerating .operator-arm { animation: operator-horn 420ms ease-out both; }
+.phase-in_transit .operator-body { animation: operator-ride 180ms ease-in-out infinite alternate; }.phase-doors_closed .operator-arm { animation: operator-horn 420ms ease-out both; }
 @keyframes operator-ride { to { transform: translateY(2px); } } @keyframes operator-horn { 50% { transform: rotate(2deg) translateX(5px); } }
 
 .gameplay-shell { height: 100%; min-height: 0; display: grid; grid-template-rows: 62px minmax(0, 1fr); padding: 12px clamp(14px, 1.6vw, 30px) 18px; background: #0d1e27; }

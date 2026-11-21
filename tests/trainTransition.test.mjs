@@ -13,11 +13,11 @@ import { adjacentGameId, DIFFICULTY_DESTINATIONS, GAME_LABELS, GAME_ORDER, gameR
 
 test("journey phases run in the required order", () => {
   assert.deepEqual(createJourneyPlan().map((step) => step.phase), [
-    "departure_warning",
     "doors_closing",
-    "accelerating",
+    "doors_closed",
+    "departing",
     "in_transit",
-    "decelerating",
+    "arriving",
     "arrived",
     "doors_opening",
   ]);
@@ -28,7 +28,7 @@ test("destination commits only after the door-closing phase", () => {
   const closeIndex = plan.findIndex((step) => step.phase === JOURNEY_PHASES.DOORS_CLOSING);
   const commitIndex = plan.findIndex((step) => step.commitDestination);
   assert.ok(commitIndex > closeIndex);
-  assert.equal(plan[commitIndex].phase, JOURNEY_PHASES.ACCELERATING);
+  assert.equal(plan[commitIndex].phase, JOURNEY_PHASES.DOORS_CLOSED);
   assert.equal(doorsAreOpen(plan[commitIndex].phase), false);
 });
 
@@ -44,9 +44,9 @@ test("forward and backward directions are deterministic", () => {
 });
 
 test("rapid navigation is rejected while a destination is pending", () => {
-  assert.equal(canStartJourney({ phase: "idle", currentDestination: "home", targetDestination: "turf" }), true);
+  assert.equal(canStartJourney({ phase: "idle_open", currentDestination: "home", targetDestination: "turf" }), true);
   assert.equal(canStartJourney({ phase: "doors_closing", currentDestination: "home", targetDestination: "turf" }), false);
-  assert.equal(canStartJourney({ phase: "idle", currentDestination: "home", targetDestination: "turf", pendingDestination: "signal" }), false);
+  assert.equal(canStartJourney({ phase: "idle_open", currentDestination: "home", targetDestination: "turf", pendingDestination: "signal" }), false);
 });
 
 test("reduced-motion journeys keep state order without waiting", () => {
@@ -67,7 +67,7 @@ test("cancellation restores a safe state", async () => {
   });
   assert.equal(result.status, "cancelled");
   assert.equal(recovered, true);
-  assert.deepEqual(phases, [JOURNEY_PHASES.DEPARTURE_WARNING]);
+  assert.deepEqual(phases, [JOURNEY_PHASES.DOORS_CLOSING]);
 });
 
 test("content commits exactly once during a complete journey", async () => {
@@ -81,14 +81,20 @@ test("content commits exactly once during a complete journey", async () => {
   });
   assert.equal(result.status, "completed");
   assert.equal(commits, 1);
-  assert.equal(phases.at(-1), JOURNEY_PHASES.IDLE);
+  assert.equal(phases.at(-1), JOURNEY_PHASES.IDLE_OPEN);
 });
 
 test("minigames become interactive only after doors finish opening", () => {
   assert.equal(isDestinationInteractive(JOURNEY_PHASES.ARRIVED, "turf", "turf"), false);
   assert.equal(isDestinationInteractive(JOURNEY_PHASES.DOORS_OPENING, "turf", "turf"), false);
-  assert.equal(isDestinationInteractive(JOURNEY_PHASES.IDLE, "turf", "turf"), true);
-  assert.equal(isDestinationInteractive(JOURNEY_PHASES.IDLE, "home", "turf"), false);
+  assert.equal(isDestinationInteractive(JOURNEY_PHASES.IDLE_OPEN, "turf", "turf"), true);
+  assert.equal(isDestinationInteractive(JOURNEY_PHASES.IDLE_OPEN, "home", "turf"), false);
+});
+
+test("door phases are explicitly marked for completion-driven waits", () => {
+  const doorSteps = createJourneyPlan().filter((step) => step.waitsForDoor);
+  assert.deepEqual(doorSteps.map((step) => step.phase), [JOURNEY_PHASES.DOORS_CLOSING, JOURNEY_PHASES.DOORS_OPENING]);
+  assert.ok(doorSteps.every((step) => step.duration === 680));
 });
 
 test("journeys do not mutate caller-owned difficulty state", async () => {

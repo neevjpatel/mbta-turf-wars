@@ -1,30 +1,30 @@
 export const JOURNEY_PHASES = Object.freeze({
-  IDLE: "idle",
-  DEPARTURE_WARNING: "departure_warning",
+  IDLE_OPEN: "idle_open",
   DOORS_CLOSING: "doors_closing",
-  ACCELERATING: "accelerating",
+  DOORS_CLOSED: "doors_closed",
+  DEPARTING: "departing",
   IN_TRANSIT: "in_transit",
-  DECELERATING: "decelerating",
+  ARRIVING: "arriving",
   ARRIVED: "arrived",
   DOORS_OPENING: "doors_opening",
 });
 
 export const JOURNEY_TIMINGS = Object.freeze({
-  departure_warning: 150,
-  doors_closing: 450,
-  accelerating: 400,
-  in_transit: 500,
-  decelerating: 400,
+  doors_closing: 680,
+  doors_closed: 80,
+  departing: 400,
+  in_transit: 600,
+  arriving: 400,
   arrived: 100,
-  doors_opening: 450,
+  doors_opening: 680,
 });
 
 const ORDERED_PHASES = [
-  JOURNEY_PHASES.DEPARTURE_WARNING,
   JOURNEY_PHASES.DOORS_CLOSING,
-  JOURNEY_PHASES.ACCELERATING,
+  JOURNEY_PHASES.DOORS_CLOSED,
+  JOURNEY_PHASES.DEPARTING,
   JOURNEY_PHASES.IN_TRANSIT,
-  JOURNEY_PHASES.DECELERATING,
+  JOURNEY_PHASES.ARRIVING,
   JOURNEY_PHASES.ARRIVED,
   JOURNEY_PHASES.DOORS_OPENING,
 ];
@@ -33,12 +33,13 @@ export function createJourneyPlan({ reducedMotion = false } = {}) {
   return ORDERED_PHASES.map((phase) => ({
     phase,
     duration: reducedMotion ? 0 : JOURNEY_TIMINGS[phase],
-    commitDestination: phase === JOURNEY_PHASES.ACCELERATING,
+    commitDestination: phase === JOURNEY_PHASES.DOORS_CLOSED,
+    waitsForDoor: phase === JOURNEY_PHASES.DOORS_CLOSING || phase === JOURNEY_PHASES.DOORS_OPENING,
   }));
 }
 
 export function canStartJourney({ phase, currentDestination, targetDestination, pendingDestination = null }) {
-  return phase === JOURNEY_PHASES.IDLE && pendingDestination === null && currentDestination !== targetDestination;
+  return phase === JOURNEY_PHASES.IDLE_OPEN && pendingDestination === null && currentDestination !== targetDestination;
 }
 
 export function resolveTravelDirection(currentIndex, targetIndex, requestedDirection) {
@@ -47,15 +48,15 @@ export function resolveTravelDirection(currentIndex, targetIndex, requestedDirec
 }
 
 export function doorsAreOpen(phase) {
-  return phase === JOURNEY_PHASES.IDLE || phase === JOURNEY_PHASES.DEPARTURE_WARNING || phase === JOURNEY_PHASES.DOORS_OPENING;
+  return phase === JOURNEY_PHASES.IDLE_OPEN || phase === JOURNEY_PHASES.DOORS_OPENING;
 }
 
 export function isMotionPhase(phase) {
-  return phase === JOURNEY_PHASES.ACCELERATING || phase === JOURNEY_PHASES.IN_TRANSIT || phase === JOURNEY_PHASES.DECELERATING;
+  return phase === JOURNEY_PHASES.DEPARTING || phase === JOURNEY_PHASES.IN_TRANSIT || phase === JOURNEY_PHASES.ARRIVING;
 }
 
 export function isDestinationInteractive(phase, activeDestination, destination) {
-  return phase === JOURNEY_PHASES.IDLE && activeDestination === destination;
+  return phase === JOURNEY_PHASES.IDLE_OPEN && activeDestination === destination;
 }
 
 function abortError() {
@@ -73,15 +74,16 @@ export function waitForJourneyStep(milliseconds, signal) {
   });
 }
 
-export async function runJourney({ plan, signal, onPhase, onCommit, onRecover, wait = waitForJourneyStep }) {
+export async function runJourney({ plan, signal, onPhase, onCommit, onRecover, wait = waitForJourneyStep, waitForPhase }) {
   try {
     for (const step of plan) {
       if (signal?.aborted) throw abortError();
       onPhase(step.phase);
       if (step.commitDestination) onCommit();
-      await wait(step.duration, signal);
+      if (waitForPhase) await waitForPhase(step, signal);
+      else await wait(step.duration, signal);
     }
-    onPhase(JOURNEY_PHASES.IDLE);
+    onPhase(JOURNEY_PHASES.IDLE_OPEN);
     return { status: "completed" };
   } catch (error) {
     onRecover?.(error);
