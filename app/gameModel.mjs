@@ -1,9 +1,10 @@
-export const GAME_ORDER = Object.freeze(["turf", "signal", "charlie"]);
+export const GAME_ORDER = Object.freeze(["turf", "signal", "charlie", "charlierun"]);
 
 export const GAME_LABELS = Object.freeze({
-  turf: "MBTA Trivia",
-  signal: "T Guesser",
+  turf: "Turf Wars",
+  signal: "Guess the T",
   charlie: "Stationle",
+  charlierun: "Charlie Run",
 });
 
 export const DIFFICULTY_DESTINATIONS = Object.freeze({
@@ -20,5 +21,5 @@ export function adjacentGameId(current, offset) {
 }
 
 export function gameRoute(game) {
-  return game === "turf" ? "/play/turf" : null;
+  return GAME_ORDER.includes(game) ? `/play/${game}` : null;
 }
