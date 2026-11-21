@@ -1,0 +1,9 @@
+{
+  "id": "warren_street_2_hard",
+  "location": "warren_street",
+  "number": 2,
+  "difficulty": "hard",
+  "image": "warren_street_2_hard.png",
+  "coordinates": null,
+  "correctStationId": "place-wrnst"
+}

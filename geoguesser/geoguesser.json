@@ -1,0 +1,254 @@
+{
+  "difficulties": {
+    "green": [
+      "allston_street_2_easy",
+      "chestnut_hill_1_easy",
+      "harvard_ave_2_easy",
+      "packards_corner_1_easy",
+      "south_station_2_easy",
+      "sutherland_road_1_easy",
+      "warren_street_1_easy"
+    ],
+    "orange": [
+      "allston_street_1_medium",
+      "boston_college_1_medium",
+      "griggs_street_2_medium",
+      "south_station_3_medium",
+      "washington_street_2_medium"
+    ],
+    "blue": [
+      "boston_college_2_hard",
+      "chiswick_road_1_hard",
+      "griggs_street_3_hard",
+      "harvard_ave_1_hard",
+      "south_station_1_hard",
+      "warren_street_2_hard"
+    ],
+    "red": [
+      "chestnut_hill_2_extreme",
+      "chiswick_road_2_extreme",
+      "griggs_street_1_extreme",
+      "harvard_ave_3_extreme",
+      "sutherland_road_2_extreme",
+      "washington_street_1_extreme"
+    ]
+  },
+  "images": [
+    {
+      "id": "allston_street_1_medium",
+      "location": "allston_street",
+      "number": 1,
+      "difficulty": "medium",
+      "image": "allston_street_1_medium.png",
+      "metadata": "allston_street_1_medium.json",
+      "alt": "Allston Street location challenge"
+    },
+    {
+      "id": "allston_street_2_easy",
+      "location": "allston_street",
+      "number": 2,
+      "difficulty": "easy",
+      "image": "allston_street_2_easy.png",
+      "metadata": "allston_street_2_easy.json",
+      "alt": "Allston Street location challenge"
+    },
+    {
+      "id": "boston_college_1_medium",
+      "location": "boston_college",
+      "number": 1,
+      "difficulty": "medium",
+      "image": "boston_college_1_medium.png",
+      "metadata": "boston_college_1_medium.json",
+      "alt": "Boston College location challenge"
+    },
+    {
+      "id": "boston_college_2_hard",
+      "location": "boston_college",
+      "number": 2,
+      "difficulty": "hard",
+      "image": "boston_college_2_hard.png",
+      "metadata": "boston_college_2_hard.json",
+      "alt": "Boston College location challenge"
+    },
+    {
+      "id": "chestnut_hill_1_easy",
+      "location": "chestnut_hill",
+      "number": 1,
+      "difficulty": "easy",
+      "image": "chestnut_hill_1_easy.png",
+      "metadata": "chestnut_hill_1_easy.json",
+      "alt": "Chestnut Hill location challenge"
+    },
+    {
+      "id": "chestnut_hill_2_extreme",
+      "location": "chestnut_hill",
+      "number": 2,
+      "difficulty": "extreme",
+      "image": "chestnut_hill_2_extreme.png",
+      "metadata": "chestnut_hill_2_extreme.json",
+      "alt": "Chestnut Hill location challenge"
+    },
+    {
+      "id": "chiswick_road_2_extreme",
+      "location": "chiswick_road",
+      "number": 2,
+      "difficulty": "extreme",
+      "image": "chiswick_road_2_extreme.png",
+      "metadata": "chiswick_road_2_extreme.json",
+      "alt": "Chiswick Road location challenge"
+    },
+    {
+      "id": "chiswick_road_1_hard",
+      "location": "chiswick_road",
+      "number": 1,
+      "difficulty": "hard",
+      "image": "chiswick_road_1_hard.png",
+      "metadata": "chiswick_road_1_hard.json",
+      "alt": "Chiswick Road location challenge"
+    },
+    {
+      "id": "griggs_street_1_extreme",
+      "location": "griggs_street",
+      "number": 1,
+      "difficulty": "extreme",
+      "image": "griggs_street_1_extreme.png",
+      "metadata": "griggs_street_1_extreme.json",
+      "alt": "Griggs Street location challenge"
+    },
+    {
+      "id": "griggs_street_2_medium",
+      "location": "griggs_street",
+      "number": 2,
+      "difficulty": "medium",
+      "image": "griggs_street_2_medium.png",
+      "metadata": "griggs_street_2_medium.json",
+      "alt": "Griggs Street location challenge"
+    },
+    {
+      "id": "griggs_street_3_hard",
+      "location": "griggs_street",
+      "number": 3,
+      "difficulty": "hard",
+      "image": "griggs_street_3_hard.png",
+      "metadata": "griggs_street_3_hard.json",
+      "alt": "Griggs Street location challenge"
+    },
+    {
+      "id": "harvard_ave_1_hard",
+      "location": "harvard_ave",
+      "number": 1,
+      "difficulty": "hard",
+      "image": "harvard_ave_1_hard.png",
+      "metadata": "harvard_ave_1_hard.json",
+      "alt": "Harvard Avenue location challenge"
+    },
+    {
+      "id": "harvard_ave_2_easy",
+      "location": "harvard_ave",
+      "number": 2,
+      "difficulty": "easy",
+      "image": "harvard_ave_2_easy.png",
+      "metadata": "harvard_ave_2_easy.json",
+      "alt": "Harvard Avenue location challenge"
+    },
+    {
+      "id": "harvard_ave_3_extreme",
+      "location": "harvard_ave",
+      "number": 3,
+      "difficulty": "extreme",
+      "image": "harvard_ave_3_extreme.png",
+      "metadata": "harvard_ave_3_extreme.json",
+      "alt": "Harvard Avenue location challenge"
+    },
+    {
+      "id": "packards_corner_1_easy",
+      "location": "packards_corner",
+      "number": 1,
+      "difficulty": "easy",
+      "image": "packards_corner_1_easy.png",
+      "metadata": "packards_corner_1_easy.json",
+      "alt": "Packards Corner location challenge"
+    },
+    {
+      "id": "south_station_1_hard",
+      "location": "south_station",
+      "number": 1,
+      "difficulty": "hard",
+      "image": "south_station_1_hard.png",
+      "metadata": "south_station_1_hard.json",
+      "alt": "South Station location challenge"
+    },
+    {
+      "id": "south_station_2_easy",
+      "location": "south_station",
+      "number": 2,
+      "difficulty": "easy",
+      "image": "south_station_2_easy.png",
+      "metadata": "south_station_2_easy.json",
+      "alt": "South Station location challenge"
+    },
+    {
+      "id": "south_station_3_medium",
+      "location": "south_station",
+      "number": 3,
+      "difficulty": "medium",
+      "image": "south_station_3_medium.png",
+      "metadata": "south_station_3_medium.json",
+      "alt": "South Station location challenge"
+    },
+    {
+      "id": "sutherland_road_1_easy",
+      "location": "sutherland_road",
+      "number": 1,
+      "difficulty": "easy",
+      "image": "sutherland_road_1_easy.png",
+      "metadata": "sutherland_road_1_easy.json",
+      "alt": "Sutherland Road location challenge"
+    },
+    {
+      "id": "sutherland_road_2_extreme",
+      "location": "sutherland_road",
+      "number": 2,
+      "difficulty": "extreme",
+      "image": "sutherland_road_2_extreme.png",
+      "metadata": "sutherland_road_2_extreme.json",
+      "alt": "Sutherland Road location challenge"
+    },
+    {
+      "id": "warren_street_1_easy",
+      "location": "warren_street",
+      "number": 1,
+      "difficulty": "easy",
+      "image": "warren_street_1_easy.png",
+      "metadata": "warren_street_1_easy.json",
+      "alt": "Warren Street location challenge"
+    },
+    {
+      "id": "warren_street_2_hard",
+      "location": "warren_street",
+      "number": 2,
+      "difficulty": "hard",
+      "image": "warren_street_2_hard.png",
+      "metadata": "warren_street_2_hard.json",
+      "alt": "Warren Street location challenge"
+    },
+    {
+      "id": "washington_street_1_extreme",
+      "location": "washington_street",
+      "number": 1,
+      "difficulty": "extreme",
+      "image": "washington_street_1_extreme.png",
+      "metadata": "washington_street_1_extreme.json",
+      "alt": "Washington Street location challenge"
+    },
+    {
+      "id": "washington_street_2_medium",
+      "location": "washington_street",
+      "number": 2,
+      "difficulty": "medium",
+      "image": "washington_street_2_medium.png",
+      "metadata": "washington_street_2_medium.json",
+      "alt": "Washington Street location challenge"
+    }
+  ]
+}

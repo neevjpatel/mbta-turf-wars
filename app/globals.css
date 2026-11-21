@@ -24,3 +24,18 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+.geo-distance-tooltip.leaflet-tooltip {
+  border: 1px solid rgb(255 255 255 / 35%);
+  border-radius: 9999px;
+  background: #07111c;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 800;
+  box-shadow: 0 4px 14px rgb(0 0 0 / 45%);
+}
+
+.geo-distance-tooltip.leaflet-tooltip::before {
+  display: none;
+}
+

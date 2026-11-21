@@ -1,0 +1,9 @@
+{
+  "id": "harvard_ave_1_hard",
+  "location": "harvard_ave",
+  "number": 1,
+  "difficulty": "hard",
+  "image": "harvard_ave_1_hard.png",
+  "coordinates": null,
+  "correctStationId": "place-harvd"
+}
