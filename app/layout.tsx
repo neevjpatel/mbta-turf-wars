@@ -1,16 +1,8 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Suspense } from "react";
 import "./globals.css";
-
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
+import { AppStateProvider } from "./AppState";
+import GlobalHeader from "./GlobalHeader";
 
 export const metadata: Metadata = {
   title: "T Games | Boston Transit Games",
@@ -21,9 +13,14 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      className="h-full"
     >
-      <body className="min-h-full flex flex-col">{children}</body>
+      <body className="min-h-full flex flex-col">
+        <AppStateProvider>
+          <Suspense fallback={<div className="global-header global-header-fallback" aria-hidden="true" />}><GlobalHeader /></Suspense>
+          <div className="app-content">{children}</div>
+        </AppStateProvider>
+      </body>
     </html>
   );
 }
