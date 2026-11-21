@@ -1,9 +1,0 @@
-{
-  "id": "griggs_street_1_extreme",
-  "location": "griggs_street",
-  "number": 1,
-  "difficulty": "extreme",
-  "image": "griggs_street_1_extreme.png",
-  "coordinates": null,
-  "correctStationId": "place-grigg"
-}

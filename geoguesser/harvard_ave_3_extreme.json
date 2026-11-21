@@ -1,9 +1,0 @@
-{
-  "id": "harvard_ave_3_extreme",
-  "location": "harvard_ave",
-  "number": 3,
-  "difficulty": "extreme",
-  "image": "harvard_ave_3_extreme.png",
-  "coordinates": null,
-  "correctStationId": "place-harvd"
-}

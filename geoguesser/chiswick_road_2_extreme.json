@@ -1,9 +1,0 @@
-{
-  "id": "chiswick_road_2_extreme",
-  "location": "chiswick_road",
-  "number": 2,
-  "difficulty": "extreme",
-  "image": "chiswick_road_2_extreme.png",
-  "coordinates": null,
-  "correctStationId": "place-chswk"
-}

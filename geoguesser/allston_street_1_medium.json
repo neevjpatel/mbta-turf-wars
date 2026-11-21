@@ -1,9 +1,0 @@
-{
-  "id": "allston_street_1_medium",
-  "location": "allston_street",
-  "number": 1,
-  "difficulty": "medium",
-  "image": "allston_street_1_medium.png",
-  "coordinates": null,
-  "correctStationId": "place-alsgr"
-}
