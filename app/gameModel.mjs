@@ -1,5 +1,11 @@
 export const GAME_ORDER = Object.freeze(["turf", "signal", "charlie"]);
 
+export const GAME_LABELS = Object.freeze({
+  turf: "MBTA Trivia",
+  signal: "T Guesser",
+  charlie: "Stationle",
+});
+
 export const DIFFICULTY_DESTINATIONS = Object.freeze({
   easy: Object.freeze({ lineShort: "Green", color: "#00843D", destination: "BOSTON COLLEGE" }),
   medium: Object.freeze({ lineShort: "Blue", color: "#003DA5", destination: "BOWDOIN" }),
