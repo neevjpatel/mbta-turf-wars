@@ -1,0 +1,9 @@
+{
+  "id": "griggs_street_3_hard",
+  "location": "griggs_street",
+  "number": 3,
+  "difficulty": "hard",
+  "image": "griggs_street_3_hard.png",
+  "coordinates": null,
+  "correctStationId": "place-grigg"
+}

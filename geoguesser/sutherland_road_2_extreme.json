@@ -1,0 +1,9 @@
+{
+  "id": "sutherland_road_2_extreme",
+  "location": "sutherland_road",
+  "number": 2,
+  "difficulty": "extreme",
+  "image": "sutherland_road_2_extreme.png",
+  "coordinates": null,
+  "correctStationId": "place-sthld"
+}
