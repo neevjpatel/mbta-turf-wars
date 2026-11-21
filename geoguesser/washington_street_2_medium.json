@@ -1,9 +1,0 @@
-{
-  "id": "washington_street_2_medium",
-  "location": "washington_street",
-  "number": 2,
-  "difficulty": "medium",
-  "image": "washington_street_2_medium.png",
-  "coordinates": null,
-  "correctStationId": "place-wascm"
-}

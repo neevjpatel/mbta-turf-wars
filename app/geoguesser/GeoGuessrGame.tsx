@@ -5,120 +5,12 @@ import Link from "next/link";
 import dynamic from "next/dynamic";
 import { createPortal } from "react-dom";
 import { useEffect, useMemo, useRef, useState } from "react";
-import catalog from "../../geoguesser/geoguesser.json";
-import bostonCollegeOne from "../../geoguesser/boston_college_1_medium.json";
-import bostonCollegeTwo from "../../geoguesser/boston_college_2_hard.json";
-import chestnutHillOne from "../../geoguesser/chestnut_hill_1_easy.json";
-import chestnutHillTwo from "../../geoguesser/chestnut_hill_2_extreme.json";
-import chiswickRoadOne from "../../geoguesser/chiswick_road_1_hard.json";
-import southStationOne from "../../geoguesser/south_station_1_hard.json";
-import southStationTwo from "../../geoguesser/south_station_2_easy.json";
-import southStationThree from "../../geoguesser/south_station_3_medium.json";
-import bostonCollegeImageOne from "../../geoguesser/boston_college_1_medium.png";
-import bostonCollegeImageTwo from "../../geoguesser/boston_college_2_hard.png";
-import chestnutHillImageOne from "../../geoguesser/chestnut_hill_1_easy.png";
-import chestnutHillImageTwo from "../../geoguesser/chestnut_hill_2_extreme.png";
-import chiswickRoadImageOne from "../../geoguesser/chiswick_road_1_hard.png";
-import southStationImageOne from "../../geoguesser/south_station_1_hard.png";
-import southStationImageTwo from "../../geoguesser/south_station_2_easy.png";
-import southStationImageThree from "../../geoguesser/south_station_3_medium.png";
-import allstonStreetOne from "../../geoguesser/allston_street_1_medium.json";
-import allstonStreetTwo from "../../geoguesser/allston_street_2_easy.json";
-import chiswickRoadTwo from "../../geoguesser/chiswick_road_2_extreme.json";
-import griggsStreetOne from "../../geoguesser/griggs_street_1_extreme.json";
-import griggsStreetTwo from "../../geoguesser/griggs_street_2_medium.json";
-import griggsStreetThree from "../../geoguesser/griggs_street_3_hard.json";
-import harvardAveOne from "../../geoguesser/harvard_ave_1_hard.json";
-import harvardAveTwo from "../../geoguesser/harvard_ave_2_easy.json";
-import harvardAveThree from "../../geoguesser/harvard_ave_3_extreme.json";
-import packardsCornerOne from "../../geoguesser/packards_corner_1_easy.json";
-import sutherlandRoadOne from "../../geoguesser/sutherland_road_1_easy.json";
-import sutherlandRoadTwo from "../../geoguesser/sutherland_road_2_extreme.json";
-import warrenStreetOne from "../../geoguesser/warren_street_1_easy.json";
-import warrenStreetTwo from "../../geoguesser/warren_street_2_hard.json";
-import washingtonStreetOne from "../../geoguesser/washington_street_1_extreme.json";
-import washingtonStreetTwo from "../../geoguesser/washington_street_2_medium.json";
-import allstonStreetImageOne from "../../geoguesser/allston_street_1_medium.png";
-import allstonStreetImageTwo from "../../geoguesser/allston_street_2_easy.png";
-import chiswickRoadImageTwo from "../../geoguesser/chiswick_road_2_extreme.png";
-import griggsStreetImageOne from "../../geoguesser/griggs_street_1_extreme.png";
-import griggsStreetImageTwo from "../../geoguesser/griggs_street_2_medium.png";
-import griggsStreetImageThree from "../../geoguesser/griggs_street_3_hard.png";
-import harvardAveImageOne from "../../geoguesser/harvard_ave_1_hard.png";
-import harvardAveImageTwo from "../../geoguesser/harvard_ave_2_easy.png";
-import harvardAveImageThree from "../../geoguesser/harvard_ave_3_extreme.png";
-import packardsCornerImageOne from "../../geoguesser/packards_corner_1_easy.png";
-import sutherlandRoadImageOne from "../../geoguesser/sutherland_road_1_easy.png";
-import sutherlandRoadImageTwo from "../../geoguesser/sutherland_road_2_extreme.png";
-import warrenStreetImageOne from "../../geoguesser/warren_street_1_easy.png";
-import warrenStreetImageTwo from "../../geoguesser/warren_street_2_hard.png";
-import washingtonStreetImageOne from "../../geoguesser/washington_street_1_extreme.png";
-import washingtonStreetImageTwo from "../../geoguesser/washington_street_2_medium.png";
-import { GEOGUESSER_STATIONS } from "./stations";
-import type { StopData } from "../mbtaData";
+import { GEOGUESSER_DIFFICULTIES, GEOGUESSER_STATIONS, type GameDifficulty, type GameImage, type GeoGuessrStation } from "./stations";
 
 const StationMap = dynamic(() => import("./StationMap"), {
   ssr: false,
   loading: () => <div className="grid h-full place-items-center bg-slate-900 text-sm text-slate-200">Loading map…</div>,
 });
-
-export type GameDifficulty = "easy" | "medium" | "hard" | "extreme";
-type ImageEntry = (typeof catalog.images)[number];
-type ImageAnswer = { correctStationId: string; coordinates: { latitude: number; longitude: number } | null };
-
-const answers: Record<string, ImageAnswer> = {
-  boston_college_1_medium: bostonCollegeOne,
-  boston_college_2_hard: bostonCollegeTwo,
-  chestnut_hill_1_easy: chestnutHillOne,
-  chestnut_hill_2_extreme: chestnutHillTwo,
-  chiswick_road_1_hard: chiswickRoadOne,
-  south_station_1_hard: southStationOne,
-  south_station_2_easy: southStationTwo,
-  south_station_3_medium: southStationThree,
-  allston_street_1_medium: allstonStreetOne,
-  allston_street_2_easy: allstonStreetTwo,
-  chiswick_road_2_extreme: chiswickRoadTwo,
-  griggs_street_1_extreme: griggsStreetOne,
-  griggs_street_2_medium: griggsStreetTwo,
-  griggs_street_3_hard: griggsStreetThree,
-  harvard_ave_1_hard: harvardAveOne,
-  harvard_ave_2_easy: harvardAveTwo,
-  harvard_ave_3_extreme: harvardAveThree,
-  packards_corner_1_easy: packardsCornerOne,
-  sutherland_road_1_easy: sutherlandRoadOne,
-  sutherland_road_2_extreme: sutherlandRoadTwo,
-  warren_street_1_easy: warrenStreetOne,
-  warren_street_2_hard: warrenStreetTwo,
-  washington_street_1_extreme: washingtonStreetOne,
-  washington_street_2_medium: washingtonStreetTwo,
-};
-
-const imageSources = {
-  boston_college_1_medium: bostonCollegeImageOne,
-  boston_college_2_hard: bostonCollegeImageTwo,
-  chestnut_hill_1_easy: chestnutHillImageOne,
-  chestnut_hill_2_extreme: chestnutHillImageTwo,
-  chiswick_road_1_hard: chiswickRoadImageOne,
-  south_station_1_hard: southStationImageOne,
-  south_station_2_easy: southStationImageTwo,
-  south_station_3_medium: southStationImageThree,
-  allston_street_1_medium: allstonStreetImageOne,
-  allston_street_2_easy: allstonStreetImageTwo,
-  chiswick_road_2_extreme: chiswickRoadImageTwo,
-  griggs_street_1_extreme: griggsStreetImageOne,
-  griggs_street_2_medium: griggsStreetImageTwo,
-  griggs_street_3_hard: griggsStreetImageThree,
-  harvard_ave_1_hard: harvardAveImageOne,
-  harvard_ave_2_easy: harvardAveImageTwo,
-  harvard_ave_3_extreme: harvardAveImageThree,
-  packards_corner_1_easy: packardsCornerImageOne,
-  sutherland_road_1_easy: sutherlandRoadImageOne,
-  sutherland_road_2_extreme: sutherlandRoadImageTwo,
-  warren_street_1_easy: warrenStreetImageOne,
-  warren_street_2_hard: warrenStreetImageTwo,
-  washington_street_1_extreme: washingtonStreetImageOne,
-  washington_street_2_medium: washingtonStreetImageTwo,
-};
 
 const difficultyInfo: Record<GameDifficulty, { label: string; color: string }> = {
   easy: { label: "Easy", color: "#34d399" },
@@ -127,7 +19,7 @@ const difficultyInfo: Record<GameDifficulty, { label: string; color: string }> =
   extreme: { label: "Extreme", color: "#f87171" },
 };
 
-function distanceKm(first: StopData, second: StopData) {
+function distanceKm(first: GeoGuessrStation, second: GeoGuessrStation) {
   const radians = (degrees: number) => (degrees * Math.PI) / 180;
   const lat1 = radians(first.lat);
   const lat2 = radians(second.lat);
@@ -144,6 +36,10 @@ function shuffleImages<T>(images: T[]) {
     [shuffled[index], shuffled[swapIndex]] = [shuffled[swapIndex], shuffled[index]];
   }
   return shuffled;
+}
+
+function formatLocationName(locationId: string) {
+  return locationId.split("_").map((part) => `${part[0].toUpperCase()}${part.slice(1)}`).join(" ");
 }
 
 function ConfettiBurst() {
@@ -255,19 +151,19 @@ function ConfettiBurst() {
 
 export default function GeoGuessrGame({ difficulty }: { difficulty: GameDifficulty }) {
   const [round, setRound] = useState(0);
-  const [selectedStation, setSelectedStation] = useState<StopData | null>(null);
-  const [result, setResult] = useState<{ guessed: StopData; correct: StopData; distance: number; points: number } | null>(null);
+  const [selectedStation, setSelectedStation] = useState<GeoGuessrStation | null>(null);
+  const [result, setResult] = useState<{ guessed: GeoGuessrStation; correct: GeoGuessrStation; distance: number; points: number } | null>(null);
   const [totalPoints, setTotalPoints] = useState(0);
   const [mapExpanded, setMapExpanded] = useState(false);
   const [loadedImageId, setLoadedImageId] = useState<string | null>(null);
 
-  const eligibleImages = useMemo(() => catalog.images.filter((entry) => entry.difficulty === difficulty), [difficulty]);
-  const [imageOrder, setImageOrder] = useState<ImageEntry[]>(eligibleImages);
+  const eligibleImages = useMemo(() => GEOGUESSER_DIFFICULTIES[difficulty], [difficulty]);
+  const [imageOrder, setImageOrder] = useState<GameImage[]>(eligibleImages);
   useEffect(() => {
     setImageOrder(shuffleImages(eligibleImages));
   }, [eligibleImages]);
-  const image: ImageEntry = imageOrder[round % imageOrder.length];
-  const correctStation = GEOGUESSER_STATIONS.find((station) => station.id === answers[image.id].correctStationId)!;
+  const image: GameImage = imageOrder[round % imageOrder.length];
+  const correctStation = GEOGUESSER_STATIONS.find((station) => station.id === image.correctStationId)!;
 
   const submitGuess = () => {
     if (!selectedStation || result) return;
@@ -286,8 +182,8 @@ export default function GeoGuessrGame({ difficulty }: { difficulty: GameDifficul
   return (
     <main className="fixed inset-0 overflow-hidden bg-[#07111c] text-white">
       <Image
-        src={imageSources[image.id as keyof typeof imageSources]}
-        alt={image.alt}
+        src={image.src}
+        alt={`${formatLocationName(image.locationId)} location challenge`}
         fill
         priority
         sizes="100vw"

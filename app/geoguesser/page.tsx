@@ -1,5 +1,6 @@
-import GeoGuessrGame, { type GameDifficulty } from "./GeoGuessrGame";
+import GeoGuessrGame from "./GeoGuessrGame";
 import { Suspense } from "react";
+import type { GameDifficulty } from "./stations";
 
 export const metadata = {
   title: "GeoGuessr | T Games",

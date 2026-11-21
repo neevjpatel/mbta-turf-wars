@@ -1,9 +1,0 @@
-{
-  "id": "sutherland_road_1_easy",
-  "location": "sutherland_road",
-  "number": 1,
-  "difficulty": "easy",
-  "image": "sutherland_road_1_easy.png",
-  "coordinates": null,
-  "correctStationId": "place-sthld"
-}

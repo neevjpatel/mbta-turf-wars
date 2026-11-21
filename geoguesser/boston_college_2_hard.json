@@ -1,9 +1,0 @@
-{
-  "id": "boston_college_2_hard",
-  "location": "boston_college",
-  "number": 2,
-  "difficulty": "hard",
-  "image": "boston_college_2_hard.png",
-  "coordinates": null,
-  "correctStationId": "place-bpl"
-}

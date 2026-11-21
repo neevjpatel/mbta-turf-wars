@@ -1,9 +1,0 @@
-{
-  "id": "chestnut_hill_2_extreme",
-  "location": "chestnut_hill",
-  "number": 2,
-  "difficulty": "extreme",
-  "image": "chestnut_hill_2_extreme.png",
-  "coordinates": null,
-  "correctStationId": "place-chill"
-}
