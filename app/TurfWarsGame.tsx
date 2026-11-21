@@ -2,7 +2,7 @@
 
 import dynamic from "next/dynamic";
 import { useEffect, useMemo, useState } from "react";
-import { BOSTON_TRIVIA, INITIAL_STOPS, SCHOOL_COLORS, StopData } from "./mbtaData";
+import { INITIAL_STOPS, LINE_DIFFICULTIES, SCHOOL_COLORS, TRIVIA_BANK, type StopData, type TransitLine, type TriviaItem } from "./mbtaData";
 
 const BostonMap = dynamic(() => import("./BostonMap"), {
   ssr: false,
@@ -11,15 +11,24 @@ const BostonMap = dynamic(() => import("./BostonMap"), {
 
 type Difficulty = { label: string; line: string; color: string; code: string };
 
+function pickRandom<T>(items: T[]): T {
+  return items[Math.floor(Math.random() * items.length)];
+}
+
 export default function TurfWarsGame({ difficulty, isActive }: { difficulty: Difficulty; isActive: boolean }) {
   const [selectedSchool, setSelectedSchool] = useState("BU");
   const [isDelayed, setIsDelayed] = useState(false);
+  const [lineFilter, setLineFilter] = useState<"ALL" | TransitLine>("ALL");
   const [liveAlerts, setLiveAlerts] = useState<string[]>([]);
-  const [activeTriviaStop, setActiveTriviaStop] = useState<StopData | null>(null);
-  const [triviaIndex, setTriviaIndex] = useState(0);
-  const [triviaFeedback, setTriviaFeedback] = useState<string | null>(null);
+  const [activeStop, setActiveStop] = useState<StopData | null>(null);
+  const [trivia, setTrivia] = useState<TriviaItem>(TRIVIA_BANK[0]);
+  const [feedback, setFeedback] = useState<string | null>(null);
   const [stops, setStops] = useState<StopData[]>(INITIAL_STOPS);
-  const [activityFeed, setActivityFeed] = useState<string[]>(["BU captured Kenmore (+25 pts)", "Northeastern captured Ruggles (+25 pts)", "MIT captured Kendall/MIT (+25 pts)"]);
+  const [activityFeed, setActivityFeed] = useState<string[]>([
+    "BU captured Kenmore (+25 pts)",
+    "Northeastern captured Ruggles (+25 pts)",
+    "MIT captured Kendall/MIT (+60 pts)",
+  ]);
   const [scores, setScores] = useState<Record<string, number>>({ BU: 140, Northeastern: 135, MIT: 120, Harvard: 110, BC: 105 });
 
   useEffect(() => {
@@ -28,7 +37,7 @@ export default function TurfWarsGame({ difficulty, isActive }: { difficulty: Dif
       try {
         const response = await fetch("https://api-v3.mbta.com/alerts?filter[route_type]=0,1&filter[lifecycle]=NEW,ONGOING", { signal: controller.signal });
         const json = await response.json();
-        setLiveAlerts((json.data || []).slice(0, 3).map((alert: { attributes?: { short_header?: string } }) => alert.attributes?.short_header).filter(Boolean));
+        setLiveAlerts((json.data || []).slice(0, 3).map((alert: { attributes?: { short_header?: string } }) => alert.attributes?.short_header).filter((headline: string | undefined): headline is string => Boolean(headline)));
       } catch (error) {
         if ((error as Error).name !== "AbortError") console.error("Failed to fetch MBTA alerts:", error);
       }
@@ -38,33 +47,36 @@ export default function TurfWarsGame({ difficulty, isActive }: { difficulty: Dif
   }, []);
 
   const ranking = useMemo(() => Object.entries(scores).sort(([, a], [, b]) => b - a), [scores]);
+  const lineConfig = activeStop ? LINE_DIFFICULTIES[activeStop.line] : null;
 
-  const handleStartClaim = (stop: StopData) => {
-    setTriviaFeedback(null);
-    setTriviaIndex(Math.floor(Math.random() * BOSTON_TRIVIA.length));
-    setActiveTriviaStop(stop);
+  const handleStartTrivia = (stop: StopData) => {
+    const matching = TRIVIA_BANK.filter((item) => item.difficulty === LINE_DIFFICULTIES[stop.line].difficulty);
+    setTrivia(pickRandom(matching.length ? matching : TRIVIA_BANK));
+    setFeedback(null);
+    setActiveStop(stop);
   };
 
-  const handleAnswerTrivia = (chosenOption: string) => {
-    if (!activeTriviaStop) return;
-    const currentQuestion = BOSTON_TRIVIA[triviaIndex];
-    if (chosenOption !== currentQuestion.answer) {
-      setTriviaFeedback("Not quite. Try again to lock in this station.");
+  const handleAnswer = (answer: string) => {
+    if (!activeStop || !lineConfig) return;
+    if (answer !== trivia.answer) {
+      setFeedback("Not quite. Try another answer to capture this station.");
       return;
     }
-    const earned = 10 * (isDelayed ? 3 : 1);
+    const earned = lineConfig.basePoints * (isDelayed ? 3 : 1);
     setScores((previous) => ({ ...previous, [selectedSchool]: (previous[selectedSchool] || 0) + earned }));
-    setStops((previous) => previous.map((stop) => stop.id === activeTriviaStop.id ? { ...stop, owner: selectedSchool, points: stop.points + earned } : stop));
-    setActivityFeed((previous) => [`${selectedSchool} captured ${activeTriviaStop.name} (+${earned} pts${isDelayed ? " · delay bonus" : ""})`, ...previous.slice(0, 4)]);
-    setActiveTriviaStop(null);
+    setStops((previous) => previous.map((stop) => stop.id === activeStop.id
+      ? { ...stop, owner: selectedSchool, points: stop.points + earned }
+      : stop));
+    setActivityFeed((previous) => [`${selectedSchool} captured ${activeStop.name} (+${earned} pts${isDelayed ? " · delay bonus" : ""})`, ...previous.slice(0, 4)]);
+    setActiveStop(null);
   };
 
   return (
-    <section className="turf-game" aria-label="Turf Capture game" data-active={isActive}>
+    <section className="turf-game" aria-label="Turf Wars trivia game" data-active={isActive}>
       <div className="game-hud">
-        <div><p className="eyebrow">Live strategy · Turf Capture</p><h2>Own the line.</h2></div>
+        <div><p className="eyebrow">Live strategy · Campus Turf Capture</p><h2>Own the line.</h2></div>
         <div className="campus-picker" aria-label="Choose your campus">
-          {Object.keys(SCHOOL_COLORS).filter((school) => school !== "Unclaimed").map((school) => (
+          {Object.keys(SCHOOL_COLORS).map((school) => (
             <button type="button" key={school} onClick={() => setSelectedSchool(school)} className={selectedSchool === school ? "active" : ""} aria-pressed={selectedSchool === school}>
               <span style={{ backgroundColor: SCHOOL_COLORS[school] }} />{school === "Northeastern" ? "NEU" : school}
             </button>
@@ -86,21 +98,24 @@ export default function TurfWarsGame({ difficulty, isActive }: { difficulty: Dif
           <div className="activity-panel"><span className="panel-heading">Recent captures</span>{activityFeed.slice(0, 3).map((item, index) => <p key={`${item}-${index}`}>{item}</p>)}</div>
         </aside>
         <div className="map-panel">
-          <BostonMap selectedSchool={selectedSchool} isDelayed={isDelayed} onStartClaim={handleStartClaim} stops={stops} isActive={isActive} />
+          <BostonMap selectedSchool={selectedSchool} isDelayed={isDelayed} onStartClaim={handleStartTrivia} stops={stops} lineFilter={lineFilter} isActive={isActive} />
           <div className="map-overlay top-left"><span className="live-pulse" /> LIVE VEHICLES</div>
-          <div className="map-overlay bottom-right">Click a station to capture</div>
+          <div className="map-line-filter" role="group" aria-label="Filter stations by line">
+            {(["ALL", "Green", "Orange", "Blue", "Red"] as const).map((line) => <button type="button" key={line} className={lineFilter === line ? "active" : ""} aria-pressed={lineFilter === line} onClick={() => setLineFilter(line)}>{line === "ALL" ? "All" : line}</button>)}
+          </div>
+          <div className="map-overlay bottom-right">Select a station to answer trivia</div>
         </div>
       </div>
-      <div className="difficulty-disclaimer"><span style={{ backgroundColor: difficulty.color }}>{difficulty.code}</span><p><strong>{difficulty.label} · {difficulty.line}</strong> changes the train presentation only. This game has no implemented difficulty rules yet.</p></div>
+      <div className="difficulty-disclaimer"><span style={{ backgroundColor: difficulty.color }}>{difficulty.code}</span><p><strong>{difficulty.label} · {difficulty.line}</strong> sets the train presentation. Station line determines trivia difficulty and capture reward.</p></div>
 
-      {activeTriviaStop && (
-        <div className="trivia-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setActiveTriviaStop(null); }}>
+      {activeStop && lineConfig && (
+        <div className="trivia-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setActiveStop(null); }}>
           <div className="trivia-modal" role="dialog" aria-modal="true" aria-labelledby="trivia-title">
-            <span className="eyebrow">Station check-in · {activeTriviaStop.name}</span>
-            <h3 id="trivia-title">{BOSTON_TRIVIA[triviaIndex].question}</h3>
-            <div className="trivia-options">{BOSTON_TRIVIA[triviaIndex].options.map((option) => <button type="button" key={option} onClick={() => handleAnswerTrivia(option)}>{option}</button>)}</div>
-            {triviaFeedback && <p className="trivia-feedback" role="alert">{triviaFeedback}</p>}
-            <button type="button" className="modal-cancel" onClick={() => setActiveTriviaStop(null)}>Cancel check-in</button>
+            <span className="eyebrow" style={{ color: lineConfig.color }}>{activeStop.line} Line · {lineConfig.difficulty} · {activeStop.name}</span>
+            <h3 id="trivia-title">{trivia.question}</h3>
+            <div className="trivia-options">{trivia.options.map((option) => <button type="button" key={option} onClick={() => handleAnswer(option)}>{option}</button>)}</div>
+            {feedback && <p className="trivia-feedback" role="alert">{feedback}</p>}
+            <button type="button" className="modal-cancel" onClick={() => setActiveStop(null)}>Cancel challenge</button>
           </div>
         </div>
       )}

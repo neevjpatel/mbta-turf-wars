@@ -1,7 +1,7 @@
 import { DIFFICULTY_DESTINATIONS, GAME_LABELS, gameRoute } from "./gameModel.mjs";
 
 export type DifficultyId = "easy" | "medium" | "hard" | "extreme";
-export type GameId = "turf" | "signal" | "charlie";
+export type GameId = "turf" | "signal" | "charlie" | "charlierun";
 
 export const DIFFICULTIES = {
   easy: { label: "Easy", line: "Green Line", code: "G", ...DIFFICULTY_DESTINATIONS.easy },
@@ -14,22 +14,22 @@ export const GAMES = [
   {
     id: "turf",
     name: GAME_LABELS.turf,
-    shortName: "Trivia",
-    subtitle: "Boston transit trivia",
-    description: "Answer MBTA trivia, capture real transit stops, and lead your campus across Boston.",
-    instructions: "Choose a campus, select a station on the live map, then answer its trivia challenge.",
+    shortName: "Turf Wars",
+    subtitle: "Campus territory strategy",
+    description: "Capture real transit stops, answer MBTA trivia, and lead your campus across Boston.",
+    instructions: "Choose a campus, select a station on the live map, and answer its trivia challenge.",
     route: gameRoute("turf"),
     availability: "playable",
   },
   {
     id: "signal",
     name: GAME_LABELS.signal,
-    shortName: "T Guesser",
-    subtitle: "MBTA geographic guessing game",
-    description: "Study a Boston transit scene, read the geographic clues, and pinpoint where you are on the MBTA.",
-    instructions: "T Guesser is being developed in a separate minigame branch.",
+    shortName: "Guess the T",
+    subtitle: "MBTA photo guessing game",
+    description: "Use real Boston location photos and the map to identify the closest MBTA station.",
+    instructions: "Choose the nearest station on the map and submit your guess.",
     route: gameRoute("signal"),
-    availability: "coming-soon",
+    availability: "playable",
   },
   {
     id: "charlie",
@@ -37,9 +37,19 @@ export const GAMES = [
     shortName: "Stationle",
     subtitle: "MBTA station guessing game",
     description: "Use route, neighborhood, and station clues to identify a mystery stop in a Worldle-inspired challenge.",
-    instructions: "Stationle is being developed in a separate minigame branch.",
+    instructions: "Guess the mystery station using distance and direction clues.",
     route: gameRoute("charlie"),
-    availability: "coming-soon",
+    availability: "playable",
+  },
+  {
+    id: "charlierun",
+    name: GAME_LABELS.charlierun,
+    shortName: "Charlie Run",
+    subtitle: "Endless MBTA runner",
+    description: "Dodge the T, collect Charlie Coins, and earn a station capture for your campus.",
+    instructions: "Choose your campus and station, then use the controls to outrun the train.",
+    route: gameRoute("charlierun"),
+    availability: "playable",
   },
 ] as const;
 

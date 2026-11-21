@@ -108,31 +108,35 @@ test("journeys do not mutate caller-owned difficulty state", async () => {
   assert.equal(difficulty, "extreme");
 });
 
-test("homepage game registry begins with the existing MBTA Trivia game", () => {
+test("homepage game registry includes the four connected games in order", () => {
   assert.equal(GAME_ORDER[0], "turf");
-  assert.deepEqual(GAME_ORDER, ["turf", "signal", "charlie"]);
+  assert.deepEqual(GAME_ORDER, ["turf", "signal", "charlie", "charlierun"]);
 });
 
 test("game stops use the finalized frontend labels", () => {
   assert.deepEqual(GAME_LABELS, {
-    turf: "MBTA Trivia",
-    signal: "T Guesser",
+    turf: "Turf Wars",
+    signal: "Guess the T",
     charlie: "Stationle",
+    charlierun: "Charlie Run",
   });
 });
 
 test("side navigation advances one stop and stops at route boundaries", () => {
   assert.equal(adjacentGameId("turf", 1), "signal");
   assert.equal(adjacentGameId("signal", 1), "charlie");
-  assert.equal(adjacentGameId("charlie", 1), null);
+  assert.equal(adjacentGameId("charlie", 1), "charlierun");
+  assert.equal(adjacentGameId("charlierun", 1), null);
   assert.equal(adjacentGameId("turf", -1), null);
   assert.equal(adjacentGameId("charlie", -1), "signal");
+  assert.equal(adjacentGameId("charlierun", -1), "charlie");
 });
 
-test("only the implemented trivia game has a gameplay route", () => {
+test("each menu game has its own gameplay route", () => {
   assert.equal(gameRoute("turf"), "/play/turf");
-  assert.equal(gameRoute("signal"), null);
-  assert.equal(gameRoute("charlie"), null);
+  assert.equal(gameRoute("signal"), "/play/signal");
+  assert.equal(gameRoute("charlie"), "/play/charlie");
+  assert.equal(gameRoute("charlierun"), "/play/charlierun");
 });
 
 test("difficulty themes map to authentic requested destinations", () => {

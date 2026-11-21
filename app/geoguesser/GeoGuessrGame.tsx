@@ -44,11 +44,7 @@ function formatLocationName(locationId: string) {
 
 function ConfettiBurst() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [portalTarget, setPortalTarget] = useState<HTMLElement | null>(null);
-
-  useEffect(() => {
-    setPortalTarget(document.body);
-  }, []);
+  const [portalTarget] = useState<HTMLElement | null>(() => typeof document === "undefined" ? null : document.body);
 
   useEffect(() => {
     if (!portalTarget) return;
@@ -149,7 +145,7 @@ function ConfettiBurst() {
   );
 }
 
-export default function GeoGuessrGame({ difficulty }: { difficulty: GameDifficulty }) {
+export default function GeoGuessrGame({ difficulty, embedded = false, onExit }: { difficulty: GameDifficulty; embedded?: boolean; onExit?: () => void }) {
   const [round, setRound] = useState(0);
   const [selectedStation, setSelectedStation] = useState<GeoGuessrStation | null>(null);
   const [result, setResult] = useState<{ guessed: GeoGuessrStation; correct: GeoGuessrStation; distance: number; points: number } | null>(null);
@@ -159,9 +155,6 @@ export default function GeoGuessrGame({ difficulty }: { difficulty: GameDifficul
 
   const eligibleImages = useMemo(() => GEOGUESSER_DIFFICULTIES[difficulty], [difficulty]);
   const [imageOrder, setImageOrder] = useState<GameImage[]>(eligibleImages);
-  useEffect(() => {
-    setImageOrder(shuffleImages(eligibleImages));
-  }, [eligibleImages]);
   const image: GameImage = imageOrder[round % imageOrder.length];
   const correctStation = GEOGUESSER_STATIONS.find((station) => station.id === image.correctStationId)!;
 
@@ -174,13 +167,18 @@ export default function GeoGuessrGame({ difficulty }: { difficulty: GameDifficul
   };
 
   const nextRound = () => {
-    setRound((previous) => (previous + 1) % imageOrder.length);
+    if (round + 1 >= imageOrder.length) {
+      setImageOrder(shuffleImages(eligibleImages));
+      setRound(0);
+    } else {
+      setRound((previous) => previous + 1);
+    }
     setSelectedStation(null);
     setResult(null);
   };
 
   return (
-    <main className="fixed inset-0 overflow-hidden bg-[#07111c] text-white">
+    <main className={`${embedded ? "relative h-full w-full" : "fixed inset-0"} overflow-hidden bg-[#07111c] text-white`}>
       <Image
         src={image.src}
         alt={`${formatLocationName(image.locationId)} location challenge`}
@@ -198,7 +196,7 @@ export default function GeoGuessrGame({ difficulty }: { difficulty: GameDifficul
           <div className="rounded-lg bg-black/40 px-3 py-2 text-sm font-semibold text-white/90 backdrop-blur sm:hidden">Pick station</div>
           <div className="hidden rounded-lg bg-black/40 px-3 py-2 text-sm font-semibold text-white/90 backdrop-blur sm:block">Pick nearest station</div>
           <div className="rounded-lg bg-black/40 px-3 py-2 text-right text-xs font-bold uppercase text-white/90 backdrop-blur">{difficultyInfo[difficulty].label} · {round + 1} · {totalPoints} pts</div>
-          <Link href="/" className="rounded-lg bg-black/40 px-3 py-2 text-sm font-semibold text-white/90 backdrop-blur transition hover:bg-black/60">Exit</Link>
+          {onExit ? <button type="button" onClick={onExit} className="rounded-lg bg-black/40 px-3 py-2 text-sm font-semibold text-white/90 backdrop-blur transition hover:bg-black/60">Exit</button> : <Link href="/" className="rounded-lg bg-black/40 px-3 py-2 text-sm font-semibold text-white/90 backdrop-blur transition hover:bg-black/60">Exit</Link>}
         </div>
       </header>
 
