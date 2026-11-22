@@ -1,5 +1,4 @@
 "use client";
-import { useEffect, useRef, useState } from "react";
 
 import Image from "next/image";
 import { useAppState } from "@/app/_state/app-state";
