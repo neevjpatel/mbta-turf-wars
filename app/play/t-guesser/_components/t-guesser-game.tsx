@@ -69,7 +69,13 @@ function TGuesserRound({ difficulty }: { difficulty: TGuesserDifficulty }) {
     const difficultyImages = T_GUESSER_IMAGES_BY_DIFFICULTY[difficulty];
     return difficultyImages.length > 0 ? difficultyImages : T_GUESSER_IMAGES_BY_DIFFICULTY.easy;
   }, [difficulty]);
-  const [imageOrder, setImageOrder] = useState<TGuesserImage[]>(() => shuffleImages(eligibleImages));
+  const [imageOrder, setImageOrder] = useState(eligibleImages);
+const eligibleKey = eligibleImages.map((img) => img.id).join(",");
+
+useEffect(() => {
+  setImageOrder(shuffleImages(eligibleImages));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+}, [eligibleKey]);
   const image: TGuesserImage = imageOrder[round % imageOrder.length];
   const correctStation = T_GUESSER_STATIONS.find((station) => station.id === image.correctStationId)!;
   const activePhotoView = useMemo(
