@@ -3,9 +3,10 @@
 import Image from "next/image";
 import { useAppState } from "@/app/_state/app-state";
 import dynamic from "next/dynamic";
-import { createPortal } from "react-dom";
 import { useEffect, useMemo, useRef, useState } from "react";
+import ConfettiBurst from "@/app/play/_components/confetti-burst";
 import { T_GUESSER_IMAGES_BY_DIFFICULTY, T_GUESSER_STATIONS, type TGuesserDifficulty, type TGuesserImage, type TGuesserStation } from "../_data/t-guesser-data";
+import { usePlay } from "@/app/_stats/player";
 
 const StationMap = dynamic(() => import("./station-map"), {
   ssr: false,
@@ -42,114 +43,6 @@ function formatLocationName(locationId: string) {
   return locationId.split("_").map((part) => `${part[0].toUpperCase()}${part.slice(1)}`).join(" ");
 }
 
-function ConfettiBurst() {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    const context = canvas?.getContext("2d");
-    if (!canvas || !context) return;
-
-    const motionPreference = window.matchMedia("(prefers-reduced-motion: reduce)");
-    if (motionPreference.matches) return;
-
-    const colors = ["#34d399", "#fbbf24", "#fb7185", "#60a5fa", "#e879f9", "#ffffff"];
-    let width = 0;
-    let height = 0;
-    let frame = 0;
-    let previousTime = 0;
-
-    const resizeCanvas = () => {
-      const pixelRatio = Math.min(window.devicePixelRatio || 1, 2);
-      width = window.innerWidth;
-      height = window.innerHeight;
-      canvas.width = Math.round(width * pixelRatio);
-      canvas.height = Math.round(height * pixelRatio);
-      canvas.style.width = `${width}px`;
-      canvas.style.height = `${height}px`;
-      context.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
-    };
-
-    resizeCanvas();
-
-    const particles = Array.from({ length: 120 }, (_, index) => {
-      const fromLeft = index % 2 === 0;
-      const cannonX = width * (fromLeft ? 0.08 : 0.92);
-      const spread = 4 + Math.random() * 7;
-      const angle = (Math.random() * 0.8 + 0.25) * (fromLeft ? -1 : 1);
-      const speed = 7 + Math.random() * 9;
-      return {
-        x: cannonX,
-        y: height * (0.7 + Math.random() * 0.1),
-        vx: (fromLeft ? 1 : -1) * Math.cos(Math.abs(angle)) * speed,
-        vy: -Math.sin(Math.abs(angle)) * speed - spread,
-        gravity: 0.22 + Math.random() * 0.12,
-        rotation: Math.random() * Math.PI,
-        spin: (Math.random() - 0.5) * 0.3,
-        width: 4 + Math.random() * 6,
-        height: 7 + Math.random() * 8,
-        color: colors[index % colors.length],
-        age: 0,
-        lifetime: 100 + Math.random() * 55,
-      };
-    });
-
-    const draw = (time: number) => {
-      const delta = previousTime === 0 ? 1 : Math.min((time - previousTime) / 16.67, 2);
-      previousTime = time;
-      context.clearRect(0, 0, width, height);
-
-      let activeParticles = 0;
-      for (const particle of particles) {
-        if (particle.age >= particle.lifetime) continue;
-        activeParticles += 1;
-        particle.age += delta;
-        particle.vy += particle.gravity * delta;
-        particle.x += particle.vx * delta;
-        particle.y += particle.vy * delta;
-        particle.rotation += particle.spin * delta;
-        const fade = Math.min(1, (particle.lifetime - particle.age) / 24);
-
-        context.save();
-        context.globalAlpha = fade;
-        context.translate(particle.x, particle.y);
-        context.rotate(particle.rotation);
-        context.fillStyle = particle.color;
-        context.fillRect(-particle.width / 2, -particle.height / 2, particle.width, particle.height);
-        context.restore();
-      }
-
-      if (activeParticles > 0) frame = requestAnimationFrame(draw);
-      else context.clearRect(0, 0, width, height);
-    };
-
-    const onMotionPreferenceChange = (event: MediaQueryListEvent) => {
-      if (event.matches) {
-        cancelAnimationFrame(frame);
-        context.clearRect(0, 0, width, height);
-      }
-    };
-
-    window.addEventListener("resize", resizeCanvas);
-    motionPreference.addEventListener("change", onMotionPreferenceChange);
-    frame = requestAnimationFrame(draw);
-
-    return () => {
-      cancelAnimationFrame(frame);
-      window.removeEventListener("resize", resizeCanvas);
-      motionPreference.removeEventListener("change", onMotionPreferenceChange);
-      context.clearRect(0, 0, width, height);
-    };
-  }, []);
-
-  if (typeof document === "undefined") return null;
-
-  return createPortal(
-    <canvas ref={canvasRef} className="pointer-events-none fixed inset-0" style={{ zIndex: 2147483647 }} aria-hidden="true" />,
-    document.body
-  );
-}
-
 export default function TGuesserGame() {
   const { difficulty } = useAppState();
   return <TGuesserRound key={difficulty} difficulty={difficulty} />;
@@ -157,14 +50,21 @@ export default function TGuesserGame() {
 
 function TGuesserRound({ difficulty }: { difficulty: TGuesserDifficulty }) {
   const [round, setRound] = useState(0);
+  const play = usePlay("t-guesser");
+  useEffect(() => play.start(), [play, round]);
   const [selectedStation, setSelectedStation] = useState<TGuesserStation | null>(null);
   const [result, setResult] = useState<{ guessed: TGuesserStation; correct: TGuesserStation; distance: number; points: number } | null>(null);
   const [totalPoints, setTotalPoints] = useState(0);
   const [mapExpanded, setMapExpanded] = useState(false);
   const [loadedImageId, setLoadedImageId] = useState<string | null>(null);
   const [photoDimensions, setPhotoDimensions] = useState<{ id: string; width: number; height: number } | null>(null);
-  const [photoPosition, setPhotoPosition] = useState<{ imageId: string; x: number; y: number }>({ imageId: "", x: 50, y: 50 });
-  const photoDrag = useRef<{ imageId: string; pointerId: number; startX: number; startY: number; positionX: number; positionY: number } | null>(null);
+  const [viewportSize, setViewportSize] = useState({ width: 0, height: 0 });
+  const [photoView, setPhotoView] = useState({ imageId: "", zoom: 1, offsetX: 0, offsetY: 0 });
+  const photoViewRef = useRef(photoView);
+  const photoViewportRef = useRef<HTMLDivElement>(null);
+  const pointersRef = useRef(new Map<number, { x: number; y: number; type: string }>());
+  const photoDrag = useRef<{ pointerId: number; startX: number; startY: number; startView: typeof photoView } | null>(null);
+  const photoPinch = useRef<{ pointerIds: [number, number]; distance: number; startView: typeof photoView } | null>(null);
   const eligibleImages = useMemo(() => {
     const difficultyImages = T_GUESSER_IMAGES_BY_DIFFICULTY[difficulty];
     return difficultyImages.length > 0 ? difficultyImages : T_GUESSER_IMAGES_BY_DIFFICULTY.easy;
@@ -178,37 +78,202 @@ useEffect(() => {
 }, [eligibleKey]);
   const image: TGuesserImage = imageOrder[round % imageOrder.length];
   const correctStation = T_GUESSER_STATIONS.find((station) => station.id === image.correctStationId)!;
-  const activePhotoPosition = photoPosition.imageId === image.id ? photoPosition : { imageId: image.id, x: 50, y: 50 };
+  const activePhotoView = useMemo(
+    () => photoView.imageId === image.id ? photoView : { imageId: image.id, zoom: 1, offsetX: 0, offsetY: 0 },
+    [image.id, photoView]
+  );
+  const activePhotoDimensions = photoDimensions?.id === image.id ? photoDimensions : null;
 
-  const startPhotoPan = (event: React.PointerEvent<HTMLDivElement>) => {
-    if (event.button !== 0 || !photoDimensions || photoDimensions.id !== image.id) return;
-    photoDrag.current = {
-      imageId: image.id,
-      pointerId: event.pointerId,
-      startX: event.clientX,
-      startY: event.clientY,
-      positionX: activePhotoPosition.x,
-      positionY: activePhotoPosition.y,
+  const commitPhotoView = (next: typeof photoView) => {
+    photoViewRef.current = next;
+    setPhotoView(next);
+  };
+
+  // The base scale uses object-cover geometry, so 1 is the smallest zoom
+  // that still fills the entire canvas.
+  const minimumZoom = 1;
+
+  const getPhotoOverflow = (zoom: number) => {
+    if (!activePhotoDimensions || viewportSize.width === 0 || viewportSize.height === 0) return { x: 0, y: 0 };
+    const coverScale = Math.max(viewportSize.width / activePhotoDimensions.width, viewportSize.height / activePhotoDimensions.height);
+    return {
+      x: Math.max(0, activePhotoDimensions.width * coverScale * zoom - viewportSize.width),
+      y: Math.max(0, activePhotoDimensions.height * coverScale * zoom - viewportSize.height),
     };
-    event.currentTarget.setPointerCapture(event.pointerId);
   };
 
-  const panPhoto = (event: React.PointerEvent<HTMLDivElement>) => {
-    const drag = photoDrag.current;
-    const dimensions = photoDimensions;
-    if (!drag || drag.pointerId !== event.pointerId || drag.imageId !== image.id || !dimensions || dimensions.id !== image.id) return;
+  const constrainPhotoView = (view: typeof photoView) => {
+    const overflow = getPhotoOverflow(view.zoom);
+    return {
+      ...view,
+      imageId: image.id,
+      offsetX: Math.min(overflow.x / 2, Math.max(-overflow.x / 2, view.offsetX)),
+      offsetY: Math.min(overflow.y / 2, Math.max(-overflow.y / 2, view.offsetY)),
+    };
+  };
 
+  const zoomAt = (requestedZoom: number, anchorX: number, anchorY: number, startingView = photoViewRef.current) => {
+    const startView = constrainPhotoView(startingView);
+    const zoom = Math.min(3, Math.max(minimumZoom, requestedZoom));
+    const ratio = zoom / startView.zoom;
+    commitPhotoView(constrainPhotoView({
+      ...startView,
+      zoom,
+      offsetX: anchorX - (anchorX - startView.offsetX) * ratio,
+      offsetY: anchorY - (anchorY - startView.offsetY) * ratio,
+    }));
+  };
+
+  const photoGeometry = (() => {
+    if (!activePhotoDimensions || viewportSize.width === 0 || viewportSize.height === 0) return null;
+    const coverScale = Math.max(viewportSize.width / activePhotoDimensions.width, viewportSize.height / activePhotoDimensions.height);
+    const view = constrainPhotoView(activePhotoView);
+    const overflowX = Math.max(0, activePhotoDimensions.width * coverScale * view.zoom - viewportSize.width);
+    const overflowY = Math.max(0, activePhotoDimensions.height * coverScale * view.zoom - viewportSize.height);
+    return {
+      width: activePhotoDimensions.width * coverScale * view.zoom,
+      height: activePhotoDimensions.height * coverScale * view.zoom,
+      overflowX,
+      overflowY,
+      offsetX: view.offsetX,
+      offsetY: view.offsetY,
+    };
+  })();
+
+  useEffect(() => {
+    const viewport = photoViewportRef.current;
+    if (!viewport) return;
+    const observer = new ResizeObserver(([entry]) => {
+      if (!entry) return;
+      const { width, height } = entry.contentRect;
+      setViewportSize((current) => current.width === width && current.height === height ? current : { width, height });
+    });
+    observer.observe(viewport);
+    return () => observer.disconnect();
+  }, []);
+
+  const zoomPhotoWithWheel = (event: React.WheelEvent<HTMLDivElement>) => {
+    if (!activePhotoDimensions) return;
+    event.preventDefault();
     const bounds = event.currentTarget.getBoundingClientRect();
-    const coverScale = Math.max(bounds.width / dimensions.width, bounds.height / dimensions.height);
-    const overflowX = Math.max(0, dimensions.width * coverScale - bounds.width);
-    const overflowY = Math.max(0, dimensions.height * coverScale - bounds.height);
-    const x = overflowX === 0 ? 50 : Math.min(100, Math.max(0, drag.positionX - (event.clientX - drag.startX) / overflowX * 100));
-    const y = overflowY === 0 ? 50 : Math.min(100, Math.max(0, drag.positionY - (event.clientY - drag.startY) / overflowY * 100));
-    setPhotoPosition({ imageId: image.id, x, y });
+    const delta = event.deltaY * (event.deltaMode === WheelEvent.DOM_DELTA_LINE ? 16 : event.deltaMode === WheelEvent.DOM_DELTA_PAGE ? bounds.height : 1);
+    const zoom = photoViewRef.current.zoom * Math.exp(-delta * 0.0015);
+    zoomAt(zoom, event.clientX - bounds.left - bounds.width / 2, event.clientY - bounds.top - bounds.height / 2);
   };
 
-  const stopPhotoPan = (event: React.PointerEvent<HTMLDivElement>) => {
+  const startPhotoGesture = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (event.pointerType === "mouse" && event.button !== 0) return;
+    pointersRef.current.set(event.pointerId, { x: event.clientX, y: event.clientY, type: event.pointerType });
+    event.currentTarget.setPointerCapture(event.pointerId);
+
+    const touchPointers = Array.from(pointersRef.current.entries()).filter(([, pointer]) => pointer.type === "touch");
+    if (touchPointers.length >= 2) {
+      const [first, second] = touchPointers.slice(-2).map(([, pointer]) => pointer);
+      photoPinch.current = {
+        pointerIds: [touchPointers[touchPointers.length - 2][0], touchPointers[touchPointers.length - 1][0]],
+        distance: Math.hypot(second.x - first.x, second.y - first.y),
+        startView: constrainPhotoView(photoViewRef.current),
+      };
+      photoDrag.current = null;
+      return;
+    }
+
+    if (pointersRef.current.size === 1 || event.pointerType === "mouse") {
+      photoDrag.current = {
+        pointerId: event.pointerId,
+        startX: event.clientX,
+        startY: event.clientY,
+        startView: constrainPhotoView(photoViewRef.current),
+      };
+    }
+  };
+
+  const movePhotoGesture = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (pointersRef.current.has(event.pointerId)) pointersRef.current.set(event.pointerId, { x: event.clientX, y: event.clientY, type: event.pointerType });
+    const pinch = photoPinch.current;
+    if (pinch?.pointerIds.includes(event.pointerId)) {
+      const first = pointersRef.current.get(pinch.pointerIds[0]);
+      const second = pointersRef.current.get(pinch.pointerIds[1]);
+      if (!first || !second || pinch.distance === 0) return;
+      const bounds = event.currentTarget.getBoundingClientRect();
+      const distance = Math.hypot(second.x - first.x, second.y - first.y);
+      const anchorX = (first.x + second.x) / 2 - bounds.left - bounds.width / 2;
+      const anchorY = (first.y + second.y) / 2 - bounds.top - bounds.height / 2;
+      zoomAt(pinch.startView.zoom * distance / pinch.distance, anchorX, anchorY, pinch.startView);
+      return;
+    }
+
+    const drag = photoDrag.current;
+    if (!drag || drag.pointerId !== event.pointerId) return;
+    commitPhotoView(constrainPhotoView({
+      ...drag.startView,
+      offsetX: drag.startView.offsetX + event.clientX - drag.startX,
+      offsetY: drag.startView.offsetY + event.clientY - drag.startY,
+    }));
+  };
+
+  const stopPhotoGesture = (event: React.PointerEvent<HTMLDivElement>) => {
+    pointersRef.current.delete(event.pointerId);
+    if (photoPinch.current?.pointerIds.includes(event.pointerId)) {
+      photoPinch.current = null;
+      const remaining = Array.from(pointersRef.current.entries()).find(([, pointer]) => pointer.type === "touch");
+      if (remaining) {
+        photoDrag.current = {
+          pointerId: remaining[0],
+          startX: remaining[1].x,
+          startY: remaining[1].y,
+          startView: constrainPhotoView(photoViewRef.current),
+        };
+      } else {
+        photoDrag.current = null;
+      }
+      return;
+    }
     if (photoDrag.current?.pointerId === event.pointerId) photoDrag.current = null;
+  };
+
+  const resetPhotoView = () => {
+    photoDrag.current = null;
+    photoPinch.current = null;
+    commitPhotoView({ imageId: image.id, zoom: 1, offsetX: 0, offsetY: 0 });
+  };
+
+  const changeZoom = (amount: number) => {
+    zoomAt(photoViewRef.current.zoom + amount, 0, 0);
+  };
+
+  const panPhotoByButton = (horizontal: -1 | 0 | 1, vertical: -1 | 0 | 1) => {
+    if (!photoGeometry) return;
+    const stepX = Math.max(24, photoGeometry.overflowX * 0.16);
+    const stepY = Math.max(24, photoGeometry.overflowY * 0.16);
+    commitPhotoView(constrainPhotoView({
+      ...activePhotoView,
+      offsetX: activePhotoView.offsetX - horizontal * stepX,
+      offsetY: activePhotoView.offsetY - vertical * stepY,
+    }));
+  };
+
+  const canPanPhoto = (horizontal: -1 | 0 | 1, vertical: -1 | 0 | 1) => {
+    if (!photoGeometry) return false;
+    const stepX = Math.max(24, photoGeometry.overflowX * 0.16);
+    const stepY = Math.max(24, photoGeometry.overflowY * 0.16);
+    const current = constrainPhotoView(activePhotoView);
+    const next = constrainPhotoView({
+      ...current,
+      offsetX: current.offsetX - horizontal * stepX,
+      offsetY: current.offsetY - vertical * stepY,
+    });
+
+    // Ignore subpixel movement so arrows reliably dim at either edge.
+    return Math.abs(next.offsetX - current.offsetX) > 0.5 || Math.abs(next.offsetY - current.offsetY) > 0.5;
+  };
+
+  const nextImage = () => {
+    pointersRef.current.clear();
+    photoDrag.current = null;
+    photoPinch.current = null;
+    setPhotoView({ imageId: "", zoom: 1, offsetX: 0, offsetY: 0 });
+    photoViewRef.current = { imageId: "", zoom: 1, offsetX: 0, offsetY: 0 };
   };
 
   const submitGuess = () => {
@@ -217,6 +282,7 @@ useEffect(() => {
     const points = selectedStation.id === correctStation.id ? 50 : 0;
     setResult({ guessed: selectedStation, correct: correctStation, distance, points });
     setTotalPoints((previous) => previous + points);
+    play.end(points, { correct: points > 0, distance_km: Math.round(distance * 100) / 100, image: image.id, guessed: selectedStation.id, answer: correctStation.id });
   };
 
   const nextRound = () => {
@@ -228,36 +294,78 @@ useEffect(() => {
     }
     setSelectedStation(null);
     setResult(null);
+    nextImage();
   };
 
   return (
     <main className="relative h-full w-full overflow-hidden bg-[#07111c] text-white">
       <div
+        ref={photoViewportRef}
         className="absolute inset-0 z-10 touch-none select-none cursor-grab active:cursor-grabbing"
-        aria-label="Drag the photo to pan across it"
-        onPointerDown={startPhotoPan}
-        onPointerMove={panPhoto}
-        onPointerUp={stopPhotoPan}
-        onPointerCancel={stopPhotoPan}
-        onLostPointerCapture={stopPhotoPan}
+        role="group"
+        aria-label="Photo canvas: drag to pan, use the scroll wheel or pinch to zoom"
+        onWheel={zoomPhotoWithWheel}
+        onPointerDown={startPhotoGesture}
+        onPointerMove={movePhotoGesture}
+        onPointerUp={stopPhotoGesture}
+        onPointerCancel={stopPhotoGesture}
+        onLostPointerCapture={stopPhotoGesture}
       >
         <Image
           src={image.src}
           alt={`${formatLocationName(image.locationId)} location challenge`}
-          fill
+          width={activePhotoDimensions?.width ?? 1600}
+          height={activePhotoDimensions?.height ?? 900}
           priority
           draggable={false}
-          sizes="100vw"
+          sizes="300vw"
           onLoad={(event) => {
             setLoadedImageId(image.id);
             setPhotoDimensions({ id: image.id, width: event.currentTarget.naturalWidth, height: event.currentTarget.naturalHeight });
           }}
-          style={{ objectPosition: `${activePhotoPosition.x}% ${activePhotoPosition.y}%` }}
-          className={`object-cover transition-[filter,transform] duration-700 ease-out ${loadedImageId === image.id ? "scale-100 blur-0" : "scale-[1.03] blur-xl"}`}
+          style={photoGeometry ? {
+            position: "absolute",
+            left: "50%",
+            top: "50%",
+            width: `${photoGeometry.width}px`,
+            height: `${photoGeometry.height}px`,
+            maxWidth: "none",
+            objectFit: "fill",
+            transform: `translate(calc(-50% + ${photoGeometry.offsetX}px), calc(-50% + ${photoGeometry.offsetY}px))`,
+            transition: "filter 700ms ease-out",
+          } : {
+            position: "absolute",
+            inset: 0,
+            width: "100%",
+            height: "100%",
+            objectFit: "cover",
+            transition: "filter 700ms ease-out",
+          }}
+          className={loadedImageId === image.id ? "blur-0" : "blur-xl"}
         />
       </div>
       <div className="pointer-events-none absolute inset-0 z-[11] bg-gradient-to-b from-black/65 via-black/5 to-black/70" />
       {result?.points === 50 && <ConfettiBurst key={`confetti-${round}`} />}
+
+      <div className="absolute left-4 top-16 z-[40] flex flex-col items-start gap-2 sm:top-4" role="group" aria-label="Photo controls">
+        <div className="flex items-center gap-1 rounded-xl border border-white/20 bg-black/80 p-1.5 text-white shadow-lg backdrop-blur" role="group" aria-label="Zoom and reset controls">
+          <button type="button" onClick={() => changeZoom(-0.25)} disabled={activePhotoView.zoom <= minimumZoom + 0.001} aria-label="Zoom out" title="Zoom out" className="grid size-10 cursor-pointer place-items-center rounded-lg text-xl font-bold hover:bg-white/15 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white disabled:cursor-not-allowed disabled:opacity-35">−</button>
+          <output className="min-w-12 text-center text-xs font-bold tabular-nums" aria-live="polite" aria-label="Zoom level">{Math.round(activePhotoView.zoom * 100)}%</output>
+          <button type="button" onClick={() => changeZoom(0.25)} disabled={activePhotoView.zoom >= 3} aria-label="Zoom in" title="Zoom in" className="grid size-10 cursor-pointer place-items-center rounded-lg text-xl font-bold hover:bg-white/15 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white disabled:cursor-not-allowed disabled:opacity-35">+</button>
+          <button type="button" onClick={resetPhotoView} aria-label="Reset photo view" title="Reset photo view" className="grid min-h-10 cursor-pointer place-items-center rounded-lg px-2 text-xs font-bold hover:bg-white/15 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white">Reset</button>
+        </div>
+        <div className="grid grid-cols-3 gap-1 rounded-xl border border-white/20 bg-black/80 p-1.5 text-white shadow-lg backdrop-blur" role="group" aria-label="Pan photo controls">
+          <span aria-hidden="true" />
+          <button type="button" onClick={() => panPhotoByButton(0, -1)} disabled={!canPanPhoto(0, -1)} aria-label="Move photo up" title="Move photo up" className="grid size-10 cursor-pointer place-items-center rounded-lg hover:bg-white/15 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white disabled:cursor-not-allowed disabled:opacity-35">↑</button>
+          <span aria-hidden="true" />
+          <button type="button" onClick={() => panPhotoByButton(-1, 0)} disabled={!canPanPhoto(-1, 0)} aria-label="Move photo left" title="Move photo left" className="grid size-10 cursor-pointer place-items-center rounded-lg hover:bg-white/15 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white disabled:cursor-not-allowed disabled:opacity-35">←</button>
+          <span aria-hidden="true" />
+          <button type="button" onClick={() => panPhotoByButton(1, 0)} disabled={!canPanPhoto(1, 0)} aria-label="Move photo right" title="Move photo right" className="grid size-10 cursor-pointer place-items-center rounded-lg hover:bg-white/15 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white disabled:cursor-not-allowed disabled:opacity-35">→</button>
+          <span aria-hidden="true" />
+          <button type="button" onClick={() => panPhotoByButton(0, 1)} disabled={!canPanPhoto(0, 1)} aria-label="Move photo down" title="Move photo down" className="grid size-10 cursor-pointer place-items-center rounded-lg hover:bg-white/15 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white disabled:cursor-not-allowed disabled:opacity-35">↓</button>
+          <span aria-hidden="true" />
+        </div>
+      </div>
 
       <header className="absolute inset-x-0 top-0 z-20 flex items-start justify-end gap-3 p-4 sm:p-6">
         <div className="flex flex-wrap items-center justify-end gap-2">
@@ -309,7 +417,7 @@ useEffect(() => {
           )}
         </div>
       </section>
-      <p className="pointer-events-none absolute bottom-1 left-4 z-[12] text-[10px] text-white/75 drop-shadow">Drag photo to pan</p>
+      <p className="pointer-events-none absolute bottom-1 left-4 z-[12] max-w-[70%] text-[10px] text-white/75 drop-shadow">Drag to pan · Scroll or pinch to zoom · Reset in photo controls</p>
       <p className="pointer-events-none absolute bottom-1 right-4 z-[12] text-[10px] text-white/60 drop-shadow sm:bottom-1 sm:right-6">Map data © OpenStreetMap contributors</p>
     </main>
   );

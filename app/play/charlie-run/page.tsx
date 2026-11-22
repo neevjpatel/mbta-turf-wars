@@ -1,5 +1,5 @@
 import GameplayShell from "../_components/gameplay-shell";
-import CharlieRunGame from "@/app/CharlieRunGame";
+import CharlieRunGame from "./_components/charlie-run-experience";
 
 export default function CharlieRunPage() {
   return (
