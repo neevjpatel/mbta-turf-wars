@@ -24,8 +24,9 @@ export default function CharlieRunScene() {
     scene.fog = new THREE.Fog(skyColor, 75, 285);
 
     const camera = new THREE.PerspectiveCamera(58, 1, 0.1, 360);
-    camera.position.set(0, 7, 13);
-    camera.lookAt(0, 0, -15);
+    // Establish the crossing in a steady medium-wide shot.
+    camera.position.set(8, 7, 30);
+    camera.lookAt(4.3, 1, 0);
 
     renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
     renderer.outputColorSpace = THREE.SRGBColorSpace;
@@ -50,11 +51,12 @@ export default function CharlieRunScene() {
     const shoeMaterial = new THREE.MeshStandardMaterial({ color: "#e7e1d5", roughness: 0.8 });
     const shadowMaterial = new THREE.MeshBasicMaterial({ color: "#161616", transparent: true, opacity: 0.34, depthWrite: false });
     const trainScale = 1.25;
-    const trackRunLength = 170 * trainScale;
-    const trackCenterZ = 17 - trackRunLength / 2;
-    const floor = new THREE.Mesh(new THREE.PlaneGeometry(520, 560), floorMaterial);
+    const trackRearZ = 110;
+    const trackRunLength = 240 * trainScale;
+    const trackCenterZ = trackRearZ - trackRunLength / 2;
+    const floor = new THREE.Mesh(new THREE.PlaneGeometry(520, 660), floorMaterial);
     floor.rotation.x = -Math.PI / 2;
-    floor.position.set(0, -0.2, -180);
+    floor.position.set(0, -0.2, -140);
     scene.add(floor);
 
     const trackSpacing = 4.2 * trainScale;
@@ -66,9 +68,9 @@ export default function CharlieRunScene() {
     const railGeometry = new THREE.BoxGeometry(0.13 * trainScale, 0.2 * trainScale, trackRunLength);
     const geometries: THREE.BufferGeometry[] = [floor.geometry, bedGeometry, sleeperGeometry, railGeometry];
     const materials: THREE.Material[] = [floorMaterial, bedMaterial, sleeperMaterial, railMaterial, hoodieMaterial, pantsMaterial, skinMaterial, hairMaterial, packMaterial, packTrimMaterial, shoeMaterial, shadowMaterial];
-    const sleeperCount = 64;
+    const sleeperCount = 96;
     const sleeperInstances: THREE.InstancedMesh[] = [];
-    const movingTrains: Array<{ group: THREE.Group; speed: number; dispose: () => void }> = [];
+    const movingTrains: Array<{ group: THREE.Group; speed: number; direction: -1 | 1; dispose: () => void }> = [];
     const scenerySegments: THREE.Group[] = [];
     const sceneryInstances: THREE.InstancedMesh[] = [];
     const transform = new THREE.Object3D();
@@ -80,7 +82,7 @@ export default function CharlieRunScene() {
 
       const sleepers = new THREE.InstancedMesh(sleeperGeometry, sleeperMaterial, sleeperCount);
       for (let index = 0; index < sleeperCount; index += 1) {
-        transform.position.set(centerX, 0.12 * trainScale, 12 - index * 2.55 * trainScale);
+        transform.position.set(centerX, 0.12 * trainScale, trackRearZ - 2 - index * 2.55 * trainScale);
         transform.updateMatrix();
         sleepers.setMatrixAt(index, transform.matrix);
       }
@@ -509,19 +511,21 @@ export default function CharlieRunScene() {
     }
     scene.add(distantCity);
 
-    const createTrain = (laneIndex: number) => {
+    const createTrain = (laneIndex: number, line?: CharlieRunLine, startZ = -132, speed?: number, direction: -1 | 1 = 1) => {
       const lines: CharlieRunLine[] = ["orange", "blue", "red"];
-      const model = createCharlieRunTrain(lines[Math.floor(Math.random() * lines.length)]);
+      const model = createCharlieRunTrain(line ?? lines[Math.floor(Math.random() * lines.length)]);
       model.group.scale.setScalar(trainScale);
-      model.group.position.set(trackCenters[laneIndex], 0.38 * trainScale - 0.48 * trainScale, -132);
+      model.group.position.set(trackCenters[laneIndex], 0.38 * trainScale - 0.48 * trainScale, startZ);
+      if (direction === -1) model.group.rotation.y = Math.PI;
       scene.add(model.group);
-      movingTrains.push({ group: model.group, speed: 17 + Math.random() * 4, dispose: model.dispose });
+      movingTrains.push({ group: model.group, speed: speed ?? 17 + Math.random() * 4, direction, dispose: model.dispose });
     };
 
     const runner = new THREE.Group();
-    runner.position.set(0, 0.19, 2);
+    runner.position.set(9.6, 0.02, 2);
     runner.scale.setScalar(runnerScale);
     runner.rotation.x = -0.19;
+    runner.rotation.y = Math.PI / 2;
     scene.add(runner);
     const upperBody = new THREE.Group();
     upperBody.position.y = 0.78;
@@ -573,7 +577,7 @@ export default function CharlieRunScene() {
       mesh.castShadow = true;
       mesh.receiveShadow = true;
       if (isGroundShadow) {
-        mesh.position.set(0, runner.position.y + part.position[1], runner.position.z + part.position[2]);
+        mesh.position.set(runner.position.x, runner.position.y + part.position[1], runner.position.z + part.position[2]);
         mesh.scale.set(1.5, 0.75, 1.5);
         scene.add(mesh);
         groundShadow = mesh;
@@ -638,7 +642,9 @@ export default function CharlieRunScene() {
     rightArm.add(rightHand);
     geometries.push(rightHand.geometry);
 
+    let introComplete = false;
     const handleLaneKey = (event: KeyboardEvent) => {
+      if (!introComplete) return;
       if (event.repeat || event.altKey || event.ctrlKey || event.metaKey) return;
       const key = event.key.toLowerCase();
       if (key !== "a" && key !== "d") return;
@@ -652,7 +658,18 @@ export default function CharlieRunScene() {
       targetLaneX = trackCenters[currentLane];
     };
     window.addEventListener("keydown", handleLaneKey);
-    let nextTrainSpawnAt = 900;
+    let nextTrainSpawnAt = Number.POSITIVE_INFINITY;
+    const introStartedAt = performance.now();
+    const introDuration = 4500;
+    const easeInOut = (progress: number) => {
+      const clamped = THREE.MathUtils.clamp(progress, 0, 1);
+      return clamped * clamped * (3 - 2 * clamped);
+    };
+    // These trains start far enough away to be seen approaching, while
+    // leaving the runner room to accelerate down the tracks.
+    createTrain(0, "orange", 78, -20, -1);
+    createTrain(1, "blue", 81, -21, -1);
+    createTrain(2, "red", 84, -22, -1);
 
     const resize = () => {
       const { width, height } = mount.getBoundingClientRect();
@@ -671,47 +688,127 @@ export default function CharlieRunScene() {
     let previousFrameTime = 0;
     let trackTravel = 0;
     const animate = (time: number) => {
-      const stride = time * 0.01;
       const delta = previousFrameTime === 0 ? 0 : Math.min((time - previousFrameTime) / 1000, 0.05);
       previousFrameTime = time;
+      const introElapsed = Math.max(0, time - introStartedAt);
+      const sidewaysWalk = !introComplete && introElapsed < 1500;
+      const lookingForTrains = !introComplete && introElapsed >= 1500 && introElapsed < 1900;
+      const gaitPhase = time * (sidewaysWalk ? 0.0055 : 0.01);
+      const gaitStrength = sidewaysWalk ? 0.34 : lookingForTrains ? 0.06 : 1;
+      const stride = gaitPhase;
       const leftDrive = Math.sin(stride);
       const rightDrive = Math.sin(stride + Math.PI);
-      leftLeg.hip.rotation.x = leftDrive * 0.9;
-      rightLeg.hip.rotation.x = rightDrive * 0.9;
-      leftLeg.knee.rotation.x = Math.max(0, Math.cos(stride)) * 1.25;
-      rightLeg.knee.rotation.x = Math.max(0, Math.cos(stride + Math.PI)) * 1.25;
-      leftArm.rotation.x = -leftDrive * 0.95;
-      rightArm.rotation.x = -rightDrive * 0.95;
-      runner.position.y = 0.19 + Math.max(0, Math.sin(stride * 2)) * 0.12;
-      runner.position.x += (targetLaneX - runner.position.x) * 0.18;
-      if (Math.abs(targetLaneX - runner.position.x) < 0.01) runner.position.x = targetLaneX;
-      if (groundShadow) groundShadow.position.x = runner.position.x;
+      leftLeg.hip.rotation.x = leftDrive * 0.9 * gaitStrength;
+      rightLeg.hip.rotation.x = rightDrive * 0.9 * gaitStrength;
+      leftLeg.knee.rotation.x = Math.max(0, Math.cos(stride)) * 1.25 * gaitStrength;
+      rightLeg.knee.rotation.x = Math.max(0, Math.cos(stride + Math.PI)) * 1.25 * gaitStrength;
+      leftArm.rotation.x = -leftDrive * 0.95 * gaitStrength;
+      rightArm.rotation.x = -rightDrive * 0.95 * gaitStrength;
+      if (!introComplete) {
+        const crossStreetProgress = easeInOut(introElapsed / 1500);
+        const runStartProgress = easeInOut((introElapsed - 1900) / 1300);
+        const turnToLookBack = easeInOut((introElapsed - 1450) / 350);
+        const flinchProgress = THREE.MathUtils.clamp((introElapsed - 1500) / 450, 0, 1);
+        const flinchJump = Math.sin(flinchProgress * Math.PI) * 0.95;
+        // He crosses onto the center track, flinches at the approaching trains,
+        // then sprints down the rails faster than they can close the gap.
+        runner.position.x = 9.6 * (1 - crossStreetProgress);
+        runner.position.z = 2 - 28 * Math.max(0, introElapsed - 1900) / 1000;
+        runner.position.y = 0.02 + flinchJump + 0.17 * runStartProgress + Math.max(0, Math.sin(stride * 2)) * (sidewaysWalk ? 0.025 : 0.12);
+        leftArm.rotation.z = flinchJump * 0.42;
+        rightArm.rotation.z = -flinchJump * 0.42;
 
-      for (const pedestrian of pedestrians) {
-        pedestrian.group.position.z += pedestrian.direction * pedestrian.speed * delta;
-        if (pedestrian.group.position.z > 54) pedestrian.group.position.z -= scenerySegmentLength;
-        if (pedestrian.group.position.z < -54) pedestrian.group.position.z += scenerySegmentLength;
-        const walkCycle = Math.sin(time * 0.004 + pedestrian.phase) * 0.42;
-        pedestrian.leftLeg.rotation.x = walkCycle;
-        pedestrian.rightLeg.rotation.x = -walkCycle;
-        pedestrian.leftArm.rotation.x = -walkCycle * 0.8;
-        pedestrian.rightArm.rotation.x = walkCycle * 0.8;
-      }
-
-      for (const segment of scenerySegments) {
-        segment.position.z += 17 * delta;
-        if (segment.position.z > 78) segment.position.z -= scenerySegmentLength * scenerySegmentCount;
-      }
-
-      trackTravel = (trackTravel + 17 * delta) % (2.55 * trainScale);
-      for (let trackIndex = 0; trackIndex < sleeperInstances.length; trackIndex += 1) {
-        const sleepers = sleeperInstances[trackIndex];
-        for (let index = 0; index < sleeperCount; index += 1) {
-          transform.position.set(trackCenters[trackIndex], 0.12 * trainScale, 12 - index * 2.55 * trainScale + trackTravel);
-          transform.updateMatrix();
-          sleepers.setMatrixAt(index, transform.matrix);
+        if (introElapsed < 1450) {
+          runner.rotation.y = Math.PI / 2;
+        } else if (introElapsed < 1800) {
+          runner.rotation.y = Math.PI / 2 + Math.PI / 2 * turnToLookBack;
+        } else if (introElapsed < 1900) {
+          runner.rotation.y = Math.PI;
+        } else {
+          runner.rotation.y = Math.PI + Math.PI * runStartProgress;
         }
-        sleepers.instanceMatrix.needsUpdate = true;
+
+        if (introElapsed >= 1900) {
+          // One steady tracking shot carries the run into gameplay.
+          const runCameraFollow = easeInOut((introElapsed - 1900) / (4050 - 1900));
+          camera.position.set(
+            8 * (1 - runCameraFollow),
+            7,
+            30 * (1 - runCameraFollow) + (runner.position.z + 13) * runCameraFollow,
+          );
+          camera.lookAt(
+            4.3 * (1 - runCameraFollow),
+            1 * (1 - runCameraFollow),
+            (runner.position.z - 15) * runCameraFollow,
+          );
+        } else if (introElapsed >= 850 && introElapsed < 1350) {
+          // A deliberate reverse cut shows the three approaching trains.
+          camera.position.set(8, 7, 20);
+          camera.lookAt(0, 1.4, 56);
+        } else {
+          // Return to the same crossing composition for the flinch.
+          camera.position.set(8, 7, 30);
+          camera.lookAt(4.3, 1, 0);
+        }
+
+        if (introElapsed >= introDuration) {
+          introComplete = true;
+          for (let trainIndex = movingTrains.length - 1; trainIndex >= 0; trainIndex -= 1) {
+            if (movingTrains[trainIndex].direction !== -1) continue;
+            const introTrain = movingTrains[trainIndex];
+            scene.remove(introTrain.group);
+            introTrain.dispose();
+            movingTrains.splice(trainIndex, 1);
+          }
+          currentLane = 1;
+          targetLaneX = trackCenters[currentLane];
+          runner.position.x = targetLaneX;
+          runner.position.y = 0.19;
+          runner.rotation.y = 0;
+          camera.position.set(0, 7, runner.position.z + 13);
+          camera.lookAt(0, 0, runner.position.z - 15);
+          nextTrainSpawnAt = time + 650;
+        }
+      } else {
+        runner.position.y = 0.19 + Math.max(0, Math.sin(stride * 2)) * 0.12;
+        runner.position.x += (targetLaneX - runner.position.x) * 0.18;
+        if (Math.abs(targetLaneX - runner.position.x) < 0.01) runner.position.x = targetLaneX;
+      }
+      if (groundShadow) {
+        groundShadow.position.set(runner.position.x, runner.position.y + 0.01, runner.position.z + 0.18);
+      }
+
+      if (introComplete) {
+        for (const pedestrian of pedestrians) {
+          pedestrian.group.position.z += pedestrian.direction * pedestrian.speed * delta;
+          if (pedestrian.group.position.z > 54) pedestrian.group.position.z -= scenerySegmentLength;
+          if (pedestrian.group.position.z < -54) pedestrian.group.position.z += scenerySegmentLength;
+          const walkCycle = Math.sin(time * 0.004 + pedestrian.phase) * 0.42;
+          pedestrian.leftLeg.rotation.x = walkCycle;
+          pedestrian.rightLeg.rotation.x = -walkCycle;
+          pedestrian.leftArm.rotation.x = -walkCycle * 0.8;
+          pedestrian.rightArm.rotation.x = walkCycle * 0.8;
+        }
+      }
+
+      if (introComplete) {
+        for (const segment of scenerySegments) {
+          segment.position.z += 17 * delta;
+          if (segment.position.z > 78) segment.position.z -= scenerySegmentLength * scenerySegmentCount;
+        }
+      }
+
+      if (introComplete) {
+        trackTravel = (trackTravel + 17 * delta) % (2.55 * trainScale);
+        for (let trackIndex = 0; trackIndex < sleeperInstances.length; trackIndex += 1) {
+          const sleepers = sleeperInstances[trackIndex];
+          for (let index = 0; index < sleeperCount; index += 1) {
+            transform.position.set(trackCenters[trackIndex], 0.12 * trainScale, trackRearZ - 2 - index * 2.55 * trainScale + trackTravel);
+            transform.updateMatrix();
+            sleepers.setMatrixAt(index, transform.matrix);
+          }
+          sleepers.instanceMatrix.needsUpdate = true;
+        }
       }
 
       if (time >= nextTrainSpawnAt) {
@@ -721,7 +818,7 @@ export default function CharlieRunScene() {
       for (let index = movingTrains.length - 1; index >= 0; index -= 1) {
         const train = movingTrains[index];
         train.group.position.z += train.speed * delta;
-        if (train.group.position.z > 25) {
+        if ((train.direction === 1 && train.group.position.z > 25) || (train.direction === -1 && train.group.position.z < -205)) {
           scene.remove(train.group);
           train.dispose();
           movingTrains.splice(index, 1);
