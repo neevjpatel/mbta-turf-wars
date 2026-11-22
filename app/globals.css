@@ -964,9 +964,9 @@ body { display: grid; grid-template-rows: 64px minmax(0, 1fr); }
 .station-selector .train-track { top: 16% !important; bottom: 8% !important; }
 
 .game-stop-panel { height: 100%; display: grid; grid-template-columns: minmax(260px, .95fr) minmax(320px, 1.05fr); gap: clamp(18px, 2.2vw, 38px); align-items: center; padding: clamp(16px, 2.3vh, 30px) clamp(20px, 2.8vw, 48px); background: radial-gradient(circle at 20% 20%, #315869, transparent 42%), #142832; }
-.game-stop-art { position: relative; height: min(100%, 340px); min-height: 200px; padding: 10px; border: 4px solid #0b191f; border-radius: 22px; background: #f8f5e8; box-shadow: inset 0 -8px 0 #c7d0c9, 0 8px 0 #071319, 0 0 0 3px #e8efe9; }
-.game-stop-art .game-art { height: 100%; min-height: 0; display: block; border-width: 4px; }
-.stop-number { position: absolute; left: 24px; top: 24px; z-index: 5; border: 2px solid #11232b; border-radius: 999px; padding: 5px 9px; background: #fffdf1; color: #172a32; box-shadow: 0 3px 0 #0004; font-size: 10px; font-weight: 900; letter-spacing: .1em; }
+.game-stop-art { position: relative; height: min(100%, 340px); min-height: 200px; border-radius: 22px; filter: drop-shadow(0 8px 0 #071319); }
+.game-stop-art .game-art { height: 100%; min-height: 0; display: block; border: 0; border-radius: inherit; background: transparent; box-shadow: none; }
+.game-thumbnail { object-fit: contain; }
 .game-stop-copy { min-width: 0; }.game-stop-copy .eyebrow { color: #f2cc68; font-size: 11px; }.game-stop-copy h1 { margin: 3px 0 10px; color: #fffbed; font-size: clamp(38px, 4vw, 66px); line-height: .92; letter-spacing: -.055em; text-transform: uppercase; text-shadow: 0 5px 0 #09151b; }.game-description { max-width: 600px; margin: 0; color: #c4d5da; font-size: clamp(14px, 1vw, 17px); line-height: 1.5; }
 .game-instructions { max-width: 620px; display: grid; grid-template-columns: auto 1fr; gap: 12px; margin: 18px 0; padding: 12px 14px; border: 2px solid #ffffff26; border-radius: 12px; background: #08171db8; }.game-instructions strong { color: #f1ce6c; font-size: 11px; letter-spacing: .1em; text-transform: uppercase; }.game-instructions span { color: #aebfc5; font-size: 12px; line-height: 1.4; }
 .play-game-button { min-width: 190px; padding: 13px 26px; font-size: 13px; }.play-game-button:disabled { color: #8ba0a8; background: #35484f; box-shadow: inset 0 -5px 0 #0003, 0 5px 0 #09161c; opacity: 1; }
