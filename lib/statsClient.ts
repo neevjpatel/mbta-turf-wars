@@ -5,16 +5,21 @@ import type { GameName } from "./games";
 
 export type { GameName };
 
-/** What /api/end returns, shown in the game-over toast. */
+/** What /api/end returns, shown in the congratulations card. */
 export type PlayStats = {
   score: number;
   duration_sec: number;
-  total_points: number;     // this player's points in this game so far
-  best_score: number;
-  rank: number;             // rank among players in this game, by total points
+  total_points: number;          // this player's points in this game so far
+  rank: number;                  // rank among players in this game, by total points
   players: number;
-  better_than_pct: number;  // more points in this game than X% of the other players
-  quicker_than_pct: number; // this round was quicker than X% of rounds
+  next_username: string | null;  // the player just above (null when you're #1)
+  next_rank: number | null;
+  points_to_next: number | null; // points needed to tie them
+  avg_round_score: number;       // everyone's average points per round in this game
+  avg_round_sec: number;         // everyone's average round length in this game
+  prev_best: number | null;
+  personal_best: number;         // 1 when this round beat your previous best
+  quicker_than_pct: number;      // this round was quicker than X% of rounds
   already_recorded: boolean;
 };
 

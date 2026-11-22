@@ -91,31 +91,97 @@ export function endGame(player: PlayerRow, playId: number, score: number, detail
 
 // ---------- stats ----------
 
-/** Everything to show right after one play ("game over" toast). */
+export type PlayStatsRow = {
+  score: number;
+  duration_sec: number;
+  total_points: number;        // your points in this game so far
+  rank: number;                // your rank in this game, by total points
+  players: number;
+  next_username: string | null; // the player just above you (null if you're #1)
+  next_rank: number | null;
+  points_to_next: number | null; // points needed to tie them
+  avg_round_score: number;     // average points per round in this game (everyone)
+  avg_round_sec: number;       // average round length in this game (everyone)
+  prev_best: number | null;    // your best round before this one
+  personal_best: number;       // 1 if this round beat your previous best
+  quicker_than_pct: number;    // this round was quicker than X% of rounds
+};
+
+/** Everything to show right after one play (the congratulations card). */
 export function playStats(playId: number) {
   return getDb()
     .prepare(
       `WITH me AS (
-         SELECT user_id, game_id, score, duration_sec FROM finished_plays WHERE score_id = ?
+         SELECT score_id, user_id, game_id, score, duration_sec FROM finished_plays WHERE score_id = ?
        ),
        ranked AS (
-         SELECT user_id, total_points, best_score,
-                RANK() OVER (ORDER BY total_points DESC)          AS rank,
-                PERCENT_RANK() OVER (ORDER BY total_points) * 100 AS pct,
-                COUNT(*) OVER ()                                  AS players
-         FROM player_game_totals WHERE game_id = (SELECT game_id FROM me)
+         SELECT t.user_id, u.username, t.total_points,
+                RANK() OVER (ORDER BY t.total_points DESC) AS rank,
+                COUNT(*) OVER ()                           AS players
+         FROM player_game_totals t JOIN users u USING(user_id)
+         WHERE t.game_id = (SELECT game_id FROM me)
+       ),
+       mine AS (SELECT * FROM ranked WHERE user_id = (SELECT user_id FROM me)),
+       -- the player directly above you: the smallest total that is still bigger than yours
+       ahead AS (
+         SELECT username, rank, total_points FROM ranked
+         WHERE total_points > (SELECT total_points FROM mine)
+         ORDER BY total_points ASC, username LIMIT 1
+       ),
+       game AS (
+         SELECT AVG(score) AS avg_score, AVG(duration_sec) AS avg_sec, COUNT(*) AS rounds
+         FROM finished_plays WHERE game_id = (SELECT game_id FROM me)
+       ),
+       prev AS (
+         SELECT MAX(score) AS prev_best FROM finished_plays
+         WHERE user_id = (SELECT user_id FROM me) AND game_id = (SELECT game_id FROM me)
+           AND score_id <> (SELECT score_id FROM me)
        )
-       SELECT me.score, me.duration_sec, r.total_points, r.best_score, r.rank, r.players,
-              -- this player has more points in this game than X% of the other players
-              ROUND(r.pct, 1) AS better_than_pct,
-              -- this round was quicker than X% of rounds
+       SELECT me.score, me.duration_sec, mine.total_points, mine.rank, mine.players,
+              ahead.username AS next_username, ahead.rank AS next_rank,
+              ahead.total_points - mine.total_points AS points_to_next,
+              ROUND(game.avg_score, 1) AS avg_round_score,
+              ROUND(game.avg_sec, 1)   AS avg_round_sec,
+              prev.prev_best,
+              (prev.prev_best IS NULL OR me.score > prev.prev_best) AS personal_best,
               ROUND(100.0 * (SELECT COUNT(*) FROM finished_plays o WHERE o.game_id = me.game_id AND o.duration_sec > me.duration_sec)
-                / MAX((SELECT COUNT(*) FROM finished_plays o WHERE o.game_id = me.game_id) - 1, 1), 1) AS quicker_than_pct
-       FROM me JOIN ranked r ON r.user_id = me.user_id`
+                / MAX(game.rounds - 1, 1), 1) AS quicker_than_pct
+       FROM me CROSS JOIN mine CROSS JOIN game CROSS JOIN prev
+       LEFT JOIN ahead ON 1 = 1`
     )
-    .get(playId) as
-    | { score: number; duration_sec: number; total_points: number; best_score: number; rank: number; players: number; better_than_pct: number; quicker_than_pct: number }
-    | undefined;
+    .get(playId) as PlayStatsRow | undefined;
+}
+
+/** How one player compares with everyone else in one game. */
+function gameComparison(gameIdValue: number, userId: number) {
+  return getDb()
+    .prepare(
+      `WITH t AS (
+         SELECT t.user_id, u.username, t.total_points,
+                ROW_NUMBER() OVER (ORDER BY t.total_points) AS rn,
+                COUNT(*) OVER ()                            AS n
+         FROM player_game_totals t JOIN users u USING(user_id)
+         WHERE t.game_id = @g
+       ),
+       me AS (SELECT total_points FROM t WHERE user_id = @u),
+       r AS (SELECT user_id, score, duration_sec FROM finished_plays WHERE game_id = @g)
+       SELECT
+         (SELECT AVG(total_points) FROM t WHERE rn IN ((n + 1) / 2, (n + 2) / 2))       AS median_total,
+         (SELECT total_points FROM t ORDER BY total_points DESC, username LIMIT 1)        AS top_total,
+         (SELECT username     FROM t ORDER BY total_points DESC, username LIMIT 1)        AS top_username,
+         (SELECT username FROM t WHERE total_points > (SELECT total_points FROM me)
+            ORDER BY total_points, username LIMIT 1)                                      AS next_username,
+         (SELECT MIN(total_points) FROM t WHERE total_points > (SELECT total_points FROM me))
+           - (SELECT total_points FROM me)                                                AS points_to_next,
+         (SELECT ROUND(AVG(score), 1)        FROM r WHERE user_id = @u)                   AS my_avg_round,
+         (SELECT ROUND(AVG(score), 1)        FROM r)                                      AS all_avg_round,
+         (SELECT ROUND(AVG(duration_sec), 1) FROM r WHERE user_id = @u)                   AS my_avg_sec,
+         (SELECT ROUND(AVG(duration_sec), 1) FROM r)                                      AS all_avg_sec,
+         -- share of rounds that earned any points (a win in T Guesser / Stople, a correct answer in Turf Wars)
+         (SELECT ROUND(100.0 * AVG(score > 0)) FROM r WHERE user_id = @u)                 AS my_scoring_pct,
+         (SELECT ROUND(100.0 * AVG(score > 0)) FROM r)                                    AS all_scoring_pct`
+    )
+    .get({ g: gameIdValue, u: userId });
 }
 
 /** One game's top players by total points earned in that game. */
@@ -178,7 +244,7 @@ export function playerProfile(player: PlayerRow) {
                 COUNT(*) OVER (PARTITION BY game_id)                                  AS players
          FROM player_game_totals
        )
-       SELECT g.name AS game,
+       SELECT g.name AS game, g.game_id,
               COALESCE(r.plays, 0)        AS plays,
               COALESCE(r.total_points, 0) AS total_points,
               r.best_score, r.rank, r.players,
@@ -188,7 +254,11 @@ export function playerProfile(player: PlayerRow) {
        FROM games g LEFT JOIN ranked r ON r.game_id = g.game_id AND r.user_id = ?
        ORDER BY g.game_id`
     )
-    .all(player.user_id, player.user_id);
+    .all(player.user_id, player.user_id)
+    .map((row) => {
+      const g = row as { game_id: number; plays: number } & Record<string, unknown>;
+      return { ...g, compare: g.plays > 0 ? gameComparison(g.game_id, player.user_id) : null };
+    });
   const totals = db
     .prepare(
       `SELECT COUNT(*) AS plays,
@@ -201,13 +271,13 @@ export function playerProfile(player: PlayerRow) {
   // Personal growth: every finished round in order, with a running total of points
   const history = db
     .prepare(
-      `SELECT p.ended_at, g.name AS game, p.score,
+      `SELECT p.ended_at, g.name AS game, p.score, p.duration_sec,
               SUM(p.score) OVER (ORDER BY p.ended_at, p.score_id ROWS UNBOUNDED PRECEDING) AS cumulative
        FROM finished_plays p JOIN games g USING(game_id)
        WHERE p.user_id = ?
        ORDER BY p.ended_at, p.score_id`
     )
-    .all(player.user_id) as { ended_at: string; game: string; score: number; cumulative: number }[];
+    .all(player.user_id) as { ended_at: string; game: string; score: number; duration_sec: number; cumulative: number }[];
   const school = player.school ? schoolLeaderboard().find((s) => s.school === player.school) ?? null : null;
   return { username: player.username, school: player.school, totals, games, schoolStanding: school, history: history.slice(-500) };
 }
