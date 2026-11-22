@@ -36,7 +36,7 @@ export default function CharlieRunScene({
     const scene = new THREE.Scene();
     const skyColor = new THREE.Color("#8faab3");
     scene.background = skyColor;
-    scene.fog = new THREE.Fog(skyColor, 75, 285);
+    scene.fog = new THREE.Fog(skyColor, 45, 145);
 
     const camera = new THREE.PerspectiveCamera(58, 1, 0.1, 360);
     // Establish the crossing in a steady medium-wide shot.
@@ -67,7 +67,7 @@ export default function CharlieRunScene({
     const shadowMaterial = new THREE.MeshBasicMaterial({ color: "#161616", transparent: true, opacity: 0.34, depthWrite: false });
     const trainScale = 1.25;
     const trackRearZ = 110;
-    const trackRunLength = 240 * trainScale;
+    const trackRunLength = 320 * trainScale;
     const trackCenterZ = trackRearZ - trackRunLength / 2;
     const floor = new THREE.Mesh(new THREE.PlaneGeometry(520, 660), floorMaterial);
     floor.rotation.x = -Math.PI / 2;
@@ -87,9 +87,9 @@ export default function CharlieRunScene({
     const coinMaterial = new THREE.MeshStandardMaterial({ color: "#ffc928", metalness: 0.68, roughness: 0.24, emissive: "#875000", emissiveIntensity: 0.25 });
     geometries.push(coinGeometry);
     materials.push(coinMaterial);
-    const sleeperCount = 96;
-    const sleeperPitch = 2.55 * trainScale;
-    const sleeperPathLength = sleeperCount * sleeperPitch;
+    const sleeperPathLength = trackRunLength - 4;
+    const sleeperCount = Math.ceil(sleeperPathLength / (2.55 * trainScale));
+    const sleeperPitch = sleeperPathLength / sleeperCount;
     const sleeperStartZ = trackRearZ - 2;
     const sleeperInstances: THREE.InstancedMesh[] = [];
     const movingTrains: Array<{ group: THREE.Group; speed: number; direction: -1 | 1; rearExtent: number; frontExtent: number; halfWidth: number; dispose: () => void }> = [];
@@ -489,55 +489,6 @@ export default function CharlieRunScene({
       scenerySegments.push(segment);
     }
 
-    // Two continuous skyline rows close the far horizon behind the moving street blocks.
-    const distantCity = new THREE.Group();
-    for (let row = 0; row < 2; row += 1) {
-      const buildingCount = 86;
-      const skylineBodies = new THREE.InstancedMesh(cityBoxGeometry, cityBodyMaterial, buildingCount);
-      const skylineRoofs = new THREE.InstancedMesh(cityBoxGeometry, cityRoofMaterial, buildingCount);
-      const skylineWindows = new THREE.InstancedMesh(cityWindowGeometry, cityWindowMaterial, sceneryWindowCapacity);
-      let skylineWindowIndex = 0;
-      const rowZ = row === 0 ? -182 : -258;
-      for (let index = 0; index < buildingCount; index += 1) {
-        const x = (index - (buildingCount - 1) / 2) * 6.15 + (row === 1 ? 3.05 : 0);
-        const width = 6.5 + Math.random() * 0.9;
-        const depth = row === 0 ? 12 + Math.random() * 5 : 10 + Math.random() * 6;
-        const centerFactor = Math.max(0, 1 - Math.abs(x) / 175);
-        const height = row === 0
-          ? 17 + centerFactor * 29 + Math.random() * 11
-          : 12 + centerFactor * 18 + Math.random() * 10;
-        const centerY = -0.16 + height / 2;
-        addInstance(skylineBodies, index, [x, centerY, rowZ], [width, height, depth]);
-        skylineBodies.setColorAt(index, new THREE.Color(buildingPalette[Math.floor(Math.random() * buildingPalette.length)]));
-        addInstance(skylineRoofs, index, [x, -0.16 + height + 0.14, rowZ], [width * 0.94, 0.28, depth * 0.94]);
-        skylineRoofs.setColorAt(index, new THREE.Color(roofPalette[Math.floor(Math.random() * roofPalette.length)]));
-
-        const floors = Math.floor((height - 2) / 2.6);
-        for (let floorIndex = 0; floorIndex < floors; floorIndex += 2) {
-          const y = -0.16 + 1.55 + floorIndex * 2.6;
-          for (const columnOffset of [-1, 1]) {
-            if (skylineWindowIndex >= sceneryWindowCapacity) break;
-            const windowX = x + columnOffset * (width * 0.27);
-            addInstance(skylineWindows, skylineWindowIndex, [windowX, y, rowZ + depth / 2 + 0.05], [0.68, 0.8, 0.08]);
-            skylineWindowIndex += 1;
-          }
-        }
-      }
-      skylineWindows.count = skylineWindowIndex;
-      skylineBodies.instanceMatrix.needsUpdate = true;
-      if (skylineBodies.instanceColor) skylineBodies.instanceColor.needsUpdate = true;
-      skylineRoofs.instanceMatrix.needsUpdate = true;
-      if (skylineRoofs.instanceColor) skylineRoofs.instanceColor.needsUpdate = true;
-      skylineWindows.instanceMatrix.needsUpdate = true;
-      for (const mesh of [skylineBodies, skylineRoofs, skylineWindows]) {
-        mesh.castShadow = false;
-        mesh.receiveShadow = false;
-        distantCity.add(mesh);
-        sceneryInstances.push(mesh);
-      }
-    }
-    scene.add(distantCity);
-
     const createTrain = (laneIndex: number, line?: CharlieRunLine, startZ = -132, speed?: number, direction: -1 | 1 = 1) => {
       const lines: CharlieRunLine[] = ["orange", "blue", "red"];
       const selectedLine = line ?? lines[Math.floor(Math.random() * lines.length)];
@@ -557,6 +508,7 @@ export default function CharlieRunScene({
         dispose: model.dispose,
       });
     };
+    const gameplayTrainSpawnZ = -132 - scenerySegmentLength;
 
     const runner = new THREE.Group();
     runner.position.set(9.6, 0.02, 2);
@@ -704,6 +656,26 @@ export default function CharlieRunScene({
     let coinCount = 0;
     let score = 0;
     const worldSpeed = 17;
+    let nextObstacleDistance = Number.POSITIVE_INFINITY;
+    const spawnObstacleInterval = () => {
+      const laneOrder = trackCenters.map((_, laneIndex) => laneIndex);
+      for (let laneIndex = laneOrder.length - 1; laneIndex > 0; laneIndex -= 1) {
+        const swapIndex = Math.floor(Math.random() * (laneIndex + 1));
+        [laneOrder[laneIndex], laneOrder[swapIndex]] = [laneOrder[swapIndex], laneOrder[laneIndex]];
+      }
+
+      const trainCount = Math.random() < 0.4 ? 2 : 1;
+      const trainLanes = laneOrder.slice(0, trainCount);
+      const openLanes = laneOrder.slice(trainCount);
+      for (const laneIndex of trainLanes) {
+        createTrain(laneIndex, undefined, gameplayTrainSpawnZ, worldSpeed);
+      }
+
+      const coinLane = openLanes[Math.floor(Math.random() * openLanes.length)];
+      // The coin trail shares the interval's speed and sits alongside the
+      // train bodies, so it stays paired with the safe lane.
+      createCoinTrail(coinLane, gameplayTrainSpawnZ - 4);
+    };
     const debrisGeometry = new THREE.IcosahedronGeometry(0.2, 0);
     geometries.push(debrisGeometry);
     const explodeRunner = (time: number) => {
@@ -763,7 +735,6 @@ export default function CharlieRunScene({
       targetLaneX = trackCenters[currentLane];
     };
     window.addEventListener("keydown", handleLaneKey);
-    let nextTrainSpawnAt = Number.POSITIVE_INFINITY;
     const introStartedAt = performance.now();
     const introDuration = 4500;
     const easeInOut = (progress: number) => {
@@ -872,7 +843,7 @@ export default function CharlieRunScene({
           runner.rotation.y = 0;
           camera.position.set(0, 7, runner.position.z + 13);
           camera.lookAt(0, 0, runner.position.z - 15);
-          nextTrainSpawnAt = time + 650;
+          nextObstacleDistance = runDistance + worldSpeed * 0.65;
           if (!coinTrailsInitialized) {
             coinTrailsInitialized = true;
             onScoreChangeRef.current(0, 0, 0);
@@ -956,26 +927,9 @@ export default function CharlieRunScene({
         }
       }
 
-      if (introComplete && !gameOver && time >= nextTrainSpawnAt) {
-        const activeGameplayTrains = movingTrains.filter((train) => train.direction === 1).length;
-        if (activeGameplayTrains < 4) {
-          const laneOrder = trackCenters.map((_, laneIndex) => laneIndex);
-          for (let laneIndex = laneOrder.length - 1; laneIndex > 0; laneIndex -= 1) {
-            const swapIndex = Math.floor(Math.random() * (laneIndex + 1));
-            [laneOrder[laneIndex], laneOrder[swapIndex]] = [laneOrder[swapIndex], laneOrder[laneIndex]];
-          }
-          const spawnPair = activeGameplayTrains <= 2 && Math.random() < 0.4;
-          const trainCount = spawnPair ? 2 : 1;
-          const trainLanes = laneOrder.slice(0, trainCount);
-          const openLanes = laneOrder.slice(trainCount);
-          const startZ = -132;
-          for (const laneIndex of trainLanes) createTrain(laneIndex, undefined, startZ);
-
-          // One trail occupies one clear track, parallel to this train pattern.
-          const coinLane = openLanes[Math.floor(Math.random() * openLanes.length)];
-          createCoinTrail(coinLane, startZ);
-        }
-        nextTrainSpawnAt = time + 2900 + Math.random() * 900;
+      if (introComplete && !gameOver && runDistance >= nextObstacleDistance) {
+        spawnObstacleInterval();
+        nextObstacleDistance += worldSpeed * (2.9 + Math.random() * 0.9);
       }
       if (!gameOver) {
         for (let index = movingTrains.length - 1; index >= 0; index -= 1) {

@@ -9,7 +9,8 @@ const CharlieRunScene = dynamic(() => import("./charlie-run-scene"), {
   loading: () => <section className="charlie-run-scene" aria-label="Charlie Run loading" />,
 });
 
-type RunResult = { score: number; distance: number; coins: number };
+type RunStats = { score: number; distance: number; coins: number };
+type RunResult = RunStats & { points: number };
 
 export default function CharlieRunExperience() {
   const play = usePlay("charlie-run");
@@ -20,12 +21,13 @@ export default function CharlieRunExperience() {
 
   useEffect(() => play.start(), [play]);
 
-  const finishRun = useCallback((runResult: RunResult) => {
+  const finishRun = useCallback((runStats: RunStats) => {
+    const runResult = { ...runStats, points: Math.round(runStats.score / 20) };
     setResult(runResult);
-    play.end(runResult.score, {
+    play.end(runResult.points, {
+      run_score: runResult.score,
       distance_m: runResult.distance,
       coins: runResult.coins,
-      credits: runResult.score / 20,
     });
   }, [play]);
 
@@ -50,7 +52,7 @@ export default function CharlieRunExperience() {
             <p>Score <strong>{result.score.toLocaleString()}</strong></p>
             <p>Distance <strong>{result.distance.toLocaleString()} m</strong></p>
             <p>Coins <strong>{result.coins}</strong></p>
-            <p className="charlie-run-credit-result">Final credit <strong>{(result.score / 20).toFixed(2)}</strong></p>
+            <p className="charlie-run-points-result">Points awarded <strong>{result.points}</strong></p>
             <button type="button" onClick={() => window.location.reload()}>Run again</button>
           </section>
         </div>
