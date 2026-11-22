@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { CircleMarker, MapContainer, Polyline, Popup, TileLayer, Tooltip, useMap } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
-import type { GuessTheTStation } from "../_data/guess-the-t-data";
+import type { TGuesserStation } from "../_data/t-guesser-data";
 import routeShapes from "../_data/route-shapes.json";
 
 function decodePolyline(encoded: string): [number, number][] {
@@ -81,7 +81,7 @@ function MapFeedback({
   correctStationId,
   incorrectGuessId,
 }: {
-  stations: GuessTheTStation[];
+  stations: TGuesserStation[];
   selectedId: string | null;
   correctStationId: string | null;
   incorrectGuessId: string | null;
@@ -123,9 +123,9 @@ export default function StationMap({
   incorrectGuessId,
   revealedDistanceKm,
 }: {
-  stations: GuessTheTStation[];
+  stations: TGuesserStation[];
   selectedId: string | null;
-  onSelect: (station: GuessTheTStation) => void;
+  onSelect: (station: TGuesserStation) => void;
   locked: boolean;
   correctStationId: string | null;
   incorrectGuessId: string | null;
@@ -151,7 +151,7 @@ export default function StationMap({
       .slice(0, 5);
   }, [search, stations]);
 
-  const chooseStation = (station: GuessTheTStation) => {
+  const chooseStation = (station: TGuesserStation) => {
     onSelect(station);
     setSearch(station.name);
     setSearchOpen(false);

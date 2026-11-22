@@ -17,5 +17,5 @@ export interface LineDifficultyConfig {
   difficulty: DifficultyLevel;
   basePoints: number;
   color: string;
-  maxStationleGuesses: number;
+  maxStopleGuesses: number;
 }

@@ -1,6 +1,5 @@
-import GameplayShell from "../_components/gameplay-shell";
-import GuessTheTGame from "./_components/guess-the-t-game";
+import { redirect } from "next/navigation";
 
-export default function GuessTheTPage() {
-  return <GameplayShell gameId="guess-the-t"><GuessTheTGame /></GameplayShell>;
+export default function LegacyTGuesserRoute() {
+  redirect("/play/t-guesser");
 }
