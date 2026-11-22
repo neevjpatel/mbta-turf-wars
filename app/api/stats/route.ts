@@ -2,8 +2,6 @@
 import { connection } from "next/server";
 import { gameTimeSummary } from "@/lib/db";
 
-export const runtime = "nodejs";
-
 export async function GET() {
   // cacheComponents is on: a sync better-sqlite3 query would otherwise be prerendered at build time
   await connection();

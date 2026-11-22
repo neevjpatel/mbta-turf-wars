@@ -7,6 +7,8 @@ import { DIFFICULTIES } from "@/app/_data/game-catalog";
 import { getStationHint } from "@/app/_lib/station-hints";
 import type { StopData, TransitLine } from "@/app/_data/transit/types";
 import { useAppState } from "@/app/_state/app-state";
+import { useEffect } from "react";
+import { usePlay } from "@/app/_stats/player";
 
 type GuessResult = { won: boolean; answer: string };
 type GuessEntry = { stop: StopData; distance: string; direction: string; sameLine: boolean };
@@ -25,6 +27,8 @@ export default function StopleGame() {
   const [guesses, setGuesses] = useState<GuessEntry[]>([]);
   const [result, setResult] = useState<GuessResult | null>(null);
   const [points, setPoints] = useState(0);
+  const play = usePlay("stople");
+  useEffect(() => play.start(), [play, target]);
 
   const submitGuess = () => {
     if (result) return;
@@ -33,12 +37,14 @@ export default function StopleGame() {
     if (guess.id === target.id) {
       setResult({ won: true, answer: target.name });
       setPoints((previous) => previous + lineConfig.basePoints);
+      play.end(lineConfig.basePoints, { won: true, guesses: guesses.length + 1, station: target.id });
       return;
     }
     const hint = getStationHint(guess, target);
     const updated = [...guesses, { stop: guess, distance: hint.distance, direction: hint.direction, sameLine: hint.sameLine }];
     setGuesses(updated);
     if (updated.length >= lineConfig.maxStopleGuesses) setResult({ won: false, answer: target.name });
+    if (updated.length >= lineConfig.maxStopleGuesses) play.end(0, { won: false, guesses: updated.length, station: target.id });
   };
 
   const startNextRound = () => {
