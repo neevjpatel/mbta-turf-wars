@@ -83,6 +83,28 @@ export default function StopleGame() {
 
   return (
     <section className="stople-game" aria-label="Stople station guessing game">
+      <svg className="stople-map-decoration" viewBox="0 0 1000 800" preserveAspectRatio="xMidYMid slice" aria-hidden="true" focusable="false">
+        <g fill="none" strokeWidth="9" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M-20 80 L760 860" stroke="#00843D" />
+          <path d="M-20 416 L1000 110" stroke="#ED8B00" />
+          <path d="M-20 570 L1020 570" stroke="#003DA5" />
+          <path d="M950 -50 L770 850" stroke="#DA291C" />
+        </g>
+        <g fill="#e7e5d8" strokeWidth="5">
+          <circle cx="100" cy="200" r="12" stroke="#00843D" />
+          <circle cx="350" cy="450" r="12" stroke="#00843D" />
+          <circle cx="600" cy="700" r="12" stroke="#00843D" />
+          <circle cx="100" cy="386" r="12" stroke="#ED8B00" />
+          <circle cx="400" cy="296" r="12" stroke="#ED8B00" />
+          <circle cx="700" cy="206" r="12" stroke="#ED8B00" />
+          <circle cx="150" cy="570" r="12" stroke="#003DA5" />
+          <circle cx="500" cy="570" r="12" stroke="#003DA5" />
+          <circle cx="850" cy="570" r="12" stroke="#003DA5" />
+          <circle cx="920" cy="100" r="12" stroke="#DA291C" />
+          <circle cx="860" cy="400" r="12" stroke="#DA291C" />
+          <circle cx="800" cy="700" r="12" stroke="#DA291C" />
+        </g>
+      </svg>
       <header className="stople-toolbar">
         <div className="stople-actions" role="group" aria-label="Game actions">
           <button type="button" onClick={startNewGame}>New game</button>
