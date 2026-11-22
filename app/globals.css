@@ -1057,8 +1057,20 @@ body { display: grid; grid-template-rows: 64px minmax(0, 1fr); }
 .stople-answer strong { color: #172930; }
 .stople-answer.won { background: #e0f0df; }.stople-answer.lost { background: #f4e1da; }
 
-.charlie-run-scene { position: relative; width: 100%; height: 100%; min-height: 0; overflow: hidden; background: #132d3b; }
+.charlie-run-scene { position: absolute; z-index: 0; inset: 0; width: 100%; height: 100%; min-height: 0; overflow: hidden; background: #132d3b; }
 .charlie-run-scene canvas { display: block; width: 100%; height: 100%; }
+.charlie-run-game { position: relative; isolation: isolate; width: 100%; height: 100%; min-height: 0; overflow: hidden; }
+.charlie-run-score { position: absolute; z-index: 5; top: 16px; left: 16px; display: grid; gap: 3px; padding: 10px 14px; border: 2px solid #f0e6c5; border-radius: 8px; background: #15252ee8; color: #fff9e8; box-shadow: 0 3px 0 #07131899; font-variant-numeric: tabular-nums; pointer-events: none; }
+.charlie-run-score strong { font-size: 20px; line-height: 1.1; letter-spacing: .04em; }
+.charlie-run-score span { color: #d0d9d6; font-size: 12px; font-weight: 700; }
+.charlie-run-result-backdrop { position: absolute; z-index: 10; inset: 0; display: grid; place-items: center; padding: 20px; background: #071318a8; }
+.charlie-run-result { width: min(100%, 360px); padding: 24px; border: 3px solid #16272d; border-radius: 16px; background: #f0eee2; color: #14272e; box-shadow: 0 12px 0 #07131880; text-align: center; }
+.charlie-run-result-kicker { margin: 0; color: #66777a; font-size: 11px; font-weight: 900; letter-spacing: .16em; text-transform: uppercase; }
+.charlie-run-result h2 { margin: 4px 0 18px; font-size: 32px; font-weight: 950; text-transform: uppercase; }
+.charlie-run-result > p:not(.charlie-run-result-kicker) { display: flex; justify-content: space-between; margin: 8px 0; font-weight: 700; }
+.charlie-run-result .charlie-run-credit-result { margin-top: 16px !important; padding-top: 12px; border-top: 2px solid #c9cec4; color: #12663c; font-size: 19px; }
+.charlie-run-result button { width: 100%; margin-top: 16px; border: 2px solid #14232a; border-radius: 999px; padding: 12px 18px; background: #00843d; color: #fff; font-size: 13px; font-weight: 900; text-transform: uppercase; cursor: pointer; }
+@media (max-width: 520px) { .charlie-run-score { top: 10px; left: 10px; padding: 8px 10px; }.charlie-run-score strong { font-size: 17px; } }
 
 .history-page { height: 100%; overflow-y: auto; background: #eff0e7; color: #172930; scroll-padding-top: 20px; }
 .history-hero { min-height: 360px; display: flex; align-items: center; gap: clamp(28px, 6vw, 100px); padding: 70px clamp(40px, 9vw, 170px); background: radial-gradient(circle at 75% 20%, #ffe5a8 0 8%, transparent 26%), linear-gradient(145deg, #69b8dd 0 45%, #a9d5bd 46% 63%, #9e5a43 64%); border-bottom: 8px solid #172930; }

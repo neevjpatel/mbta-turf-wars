@@ -4,8 +4,23 @@ import * as THREE from "three";
 import { useEffect, useRef } from "react";
 import { createCharlieRunTrain, type CharlieRunLine } from "./charlie-run-train-models";
 
-export default function CharlieRunScene() {
+type RunResult = { score: number; distance: number; coins: number };
+
+export default function CharlieRunScene({
+  onScoreChange,
+  onGameOver,
+}: {
+  onScoreChange: (score: number, distance: number, coins: number) => void;
+  onGameOver: (result: RunResult) => void;
+}) {
   const mountRef = useRef<HTMLElement>(null);
+  const onScoreChangeRef = useRef(onScoreChange);
+  const onGameOverRef = useRef(onGameOver);
+
+  useEffect(() => {
+    onScoreChangeRef.current = onScoreChange;
+    onGameOverRef.current = onGameOver;
+  }, [onScoreChange, onGameOver]);
 
   useEffect(() => {
     const mount = mountRef.current;
@@ -68,12 +83,22 @@ export default function CharlieRunScene() {
     const railGeometry = new THREE.BoxGeometry(0.13 * trainScale, 0.2 * trainScale, trackRunLength);
     const geometries: THREE.BufferGeometry[] = [floor.geometry, bedGeometry, sleeperGeometry, railGeometry];
     const materials: THREE.Material[] = [floorMaterial, bedMaterial, sleeperMaterial, railMaterial, hoodieMaterial, pantsMaterial, skinMaterial, hairMaterial, packMaterial, packTrimMaterial, shoeMaterial, shadowMaterial];
+    const coinGeometry = new THREE.CylinderGeometry(0.42, 0.42, 0.12, 20);
+    const coinMaterial = new THREE.MeshStandardMaterial({ color: "#ffc928", metalness: 0.68, roughness: 0.24, emissive: "#875000", emissiveIntensity: 0.25 });
+    geometries.push(coinGeometry);
+    materials.push(coinMaterial);
     const sleeperCount = 96;
+    const sleeperPitch = 2.55 * trainScale;
+    const sleeperPathLength = sleeperCount * sleeperPitch;
+    const sleeperStartZ = trackRearZ - 2;
     const sleeperInstances: THREE.InstancedMesh[] = [];
-    const movingTrains: Array<{ group: THREE.Group; speed: number; direction: -1 | 1; dispose: () => void }> = [];
+    const movingTrains: Array<{ group: THREE.Group; speed: number; direction: -1 | 1; rearExtent: number; frontExtent: number; halfWidth: number; dispose: () => void }> = [];
+    const coinTrails: Array<{ group: THREE.Group; coins: THREE.Mesh[]; collected: boolean[] }> = [];
+    const explosionDebris: Array<{ mesh: THREE.Mesh; velocity: THREE.Vector3; spin: THREE.Vector3; flash?: boolean }> = [];
     const scenerySegments: THREE.Group[] = [];
     const sceneryInstances: THREE.InstancedMesh[] = [];
     const transform = new THREE.Object3D();
+    const sleeperTransform = new THREE.Object3D();
 
     for (const centerX of trackCenters) {
       const bed = new THREE.Mesh(bedGeometry, bedMaterial);
@@ -82,9 +107,11 @@ export default function CharlieRunScene() {
 
       const sleepers = new THREE.InstancedMesh(sleeperGeometry, sleeperMaterial, sleeperCount);
       for (let index = 0; index < sleeperCount; index += 1) {
-        transform.position.set(centerX, 0.12 * trainScale, trackRearZ - 2 - index * 2.55 * trainScale);
-        transform.updateMatrix();
-        sleepers.setMatrixAt(index, transform.matrix);
+        sleeperTransform.position.set(centerX, 0.12 * trainScale, sleeperStartZ - index * sleeperPitch);
+        sleeperTransform.rotation.set(0, 0, 0);
+        sleeperTransform.scale.set(1, 1, 1);
+        sleeperTransform.updateMatrix();
+        sleepers.setMatrixAt(index, sleeperTransform.matrix);
       }
       sleepers.instanceMatrix.needsUpdate = true;
       scene.add(sleepers);
@@ -513,12 +540,22 @@ export default function CharlieRunScene() {
 
     const createTrain = (laneIndex: number, line?: CharlieRunLine, startZ = -132, speed?: number, direction: -1 | 1 = 1) => {
       const lines: CharlieRunLine[] = ["orange", "blue", "red"];
-      const model = createCharlieRunTrain(line ?? lines[Math.floor(Math.random() * lines.length)]);
+      const selectedLine = line ?? lines[Math.floor(Math.random() * lines.length)];
+      const model = createCharlieRunTrain(selectedLine);
       model.group.scale.setScalar(trainScale);
       model.group.position.set(trackCenters[laneIndex], 0.38 * trainScale - 0.48 * trainScale, startZ);
       if (direction === -1) model.group.rotation.y = Math.PI;
       scene.add(model.group);
-      movingTrains.push({ group: model.group, speed: speed ?? 17 + Math.random() * 4, direction, dispose: model.dispose });
+      const dimensions = { orange: [19.812, 2.819], red: [21.184, 3.048], blue: [14.884, 2.819] }[selectedLine];
+      movingTrains.push({
+        group: model.group,
+        speed: speed ?? 17 + Math.random() * 4,
+        direction,
+        rearExtent: dimensions[0] * trainScale,
+        frontExtent: 0.72 * trainScale,
+        halfWidth: dimensions[1] * trainScale / 2,
+        dispose: model.dispose,
+      });
     };
 
     const runner = new THREE.Group();
@@ -527,6 +564,22 @@ export default function CharlieRunScene() {
     runner.rotation.x = -0.19;
     runner.rotation.y = Math.PI / 2;
     scene.add(runner);
+    const createCoinTrail = (laneIndex: number, startZ: number) => {
+      const group = new THREE.Group();
+      group.position.set(trackCenters[laneIndex], 0, startZ);
+      const trailCoins: THREE.Mesh[] = [];
+      const collected = Array.from({ length: 7 }, () => false);
+      for (let index = 0; index < collected.length; index += 1) {
+        const coin = new THREE.Mesh(coinGeometry, coinMaterial);
+        coin.rotation.x = Math.PI / 2;
+        coin.position.set(0, 1.15 + Math.sin(index * 0.8) * 0.18, -index * 2.6);
+        coin.castShadow = true;
+        group.add(coin);
+        trailCoins.push(coin);
+      }
+      scene.add(group);
+      coinTrails.push({ group, coins: trailCoins, collected });
+    };
     const upperBody = new THREE.Group();
     upperBody.position.y = 0.78;
     runner.add(upperBody);
@@ -643,6 +696,58 @@ export default function CharlieRunScene() {
     geometries.push(rightHand.geometry);
 
     let introComplete = false;
+    let gameOver = false;
+    let gameOverStartedAt = 0;
+    let gameOverReported = false;
+    let coinTrailsInitialized = false;
+    let runDistance = 0;
+    let coinCount = 0;
+    let score = 0;
+    const worldSpeed = 17;
+    const debrisGeometry = new THREE.IcosahedronGeometry(0.2, 0);
+    geometries.push(debrisGeometry);
+    const explodeRunner = (time: number) => {
+      gameOver = true;
+      gameOverStartedAt = time;
+      runner.updateWorldMatrix(true, true);
+      runner.traverse((object) => {
+        if (!(object instanceof THREE.Mesh) || !object.visible) return;
+        const debris = object.clone();
+        const worldPosition = object.getWorldPosition(new THREE.Vector3());
+        const worldQuaternion = object.getWorldQuaternion(new THREE.Quaternion());
+        const worldScale = object.getWorldScale(new THREE.Vector3());
+        scene.add(debris);
+        debris.position.copy(worldPosition);
+        debris.quaternion.copy(worldQuaternion);
+        debris.scale.copy(worldScale);
+        debris.castShadow = true;
+        const outward = new THREE.Vector3(
+          (Math.random() - 0.5) * 12,
+          4 + Math.random() * 9,
+          (Math.random() - 0.5) * 12,
+        );
+        explosionDebris.push({
+          mesh: debris,
+          velocity: outward,
+          spin: new THREE.Vector3((Math.random() - 0.5) * 12, (Math.random() - 0.5) * 12, (Math.random() - 0.5) * 12),
+        });
+      });
+
+      const flashMaterial = new THREE.MeshBasicMaterial({ color: "#fff0a0", transparent: true, opacity: 0.9, depthWrite: false });
+      materials.push(flashMaterial);
+      const burst = new THREE.Mesh(debrisGeometry, flashMaterial);
+      burst.position.copy(runner.position).add(new THREE.Vector3(0, 1, 0));
+      burst.scale.setScalar(0.25);
+      scene.add(burst);
+      explosionDebris.push({
+        mesh: burst,
+        velocity: new THREE.Vector3(0, 0, 0),
+        spin: new THREE.Vector3(0, 0, 0),
+        flash: true,
+      });
+      runner.visible = false;
+      if (groundShadow) groundShadow.visible = false;
+    };
     const handleLaneKey = (event: KeyboardEvent) => {
       if (!introComplete) return;
       if (event.repeat || event.altKey || event.ctrlKey || event.metaKey) return;
@@ -768,8 +873,12 @@ export default function CharlieRunScene() {
           camera.position.set(0, 7, runner.position.z + 13);
           camera.lookAt(0, 0, runner.position.z - 15);
           nextTrainSpawnAt = time + 650;
+          if (!coinTrailsInitialized) {
+            coinTrailsInitialized = true;
+            onScoreChangeRef.current(0, 0, 0);
+          }
         }
-      } else {
+      } else if (!gameOver) {
         runner.position.y = 0.19 + Math.max(0, Math.sin(stride * 2)) * 0.12;
         runner.position.x += (targetLaneX - runner.position.x) * 0.18;
         if (Math.abs(targetLaneX - runner.position.x) < 0.01) runner.position.x = targetLaneX;
@@ -778,7 +887,7 @@ export default function CharlieRunScene() {
         groundShadow.position.set(runner.position.x, runner.position.y + 0.01, runner.position.z + 0.18);
       }
 
-      if (introComplete) {
+      if (introComplete && !gameOver) {
         for (const pedestrian of pedestrians) {
           pedestrian.group.position.z += pedestrian.direction * pedestrian.speed * delta;
           if (pedestrian.group.position.z > 54) pedestrian.group.position.z -= scenerySegmentLength;
@@ -791,37 +900,135 @@ export default function CharlieRunScene() {
         }
       }
 
-      if (introComplete) {
+      if (introComplete && !gameOver) {
         for (const segment of scenerySegments) {
           segment.position.z += 17 * delta;
           if (segment.position.z > 78) segment.position.z -= scenerySegmentLength * scenerySegmentCount;
         }
       }
 
-      if (introComplete) {
-        trackTravel = (trackTravel + 17 * delta) % (2.55 * trainScale);
+      if (introComplete && !gameOver) {
+        runDistance += worldSpeed * delta;
+        trackTravel = (trackTravel + worldSpeed * delta) % sleeperPitch;
         for (let trackIndex = 0; trackIndex < sleeperInstances.length; trackIndex += 1) {
           const sleepers = sleeperInstances[trackIndex];
           for (let index = 0; index < sleeperCount; index += 1) {
-            transform.position.set(trackCenters[trackIndex], 0.12 * trainScale, trackRearZ - 2 - index * 2.55 * trainScale + trackTravel);
-            transform.updateMatrix();
-            sleepers.setMatrixAt(index, transform.matrix);
+            const rawOffset = index * sleeperPitch - trackTravel;
+            const wrappedOffset = ((rawOffset % sleeperPathLength) + sleeperPathLength) % sleeperPathLength;
+            sleeperTransform.position.set(trackCenters[trackIndex], 0.12 * trainScale, sleeperStartZ - wrappedOffset);
+            sleeperTransform.rotation.set(0, 0, 0);
+            sleeperTransform.scale.set(1, 1, 1);
+            sleeperTransform.updateMatrix();
+            sleepers.setMatrixAt(index, sleeperTransform.matrix);
           }
           sleepers.instanceMatrix.needsUpdate = true;
         }
+
+        for (let trailIndex = coinTrails.length - 1; trailIndex >= 0; trailIndex -= 1) {
+          const trail = coinTrails[trailIndex];
+          trail.group.position.z += worldSpeed * delta;
+          for (let coinIndex = 0; coinIndex < trail.coins.length; coinIndex += 1) {
+            const coin = trail.coins[coinIndex];
+            if (trail.collected[coinIndex]) continue;
+            coin.rotation.y += delta * 2.8;
+            const coinZ = trail.group.position.z + coin.position.z;
+            const coinY = trail.group.position.y + coin.position.y;
+            if (Math.abs(trail.group.position.x - runner.position.x) <= 1.7
+              && Math.abs(coinZ - runner.position.z) <= 1.8
+              && coinY >= runner.position.y + 0.35
+              && coinY <= runner.position.y + 2.25) {
+              trail.collected[coinIndex] = true;
+              coin.visible = false;
+              coinCount += 1;
+            }
+          }
+          const lastCoin = trail.coins[trail.coins.length - 1];
+          if (trail.group.position.z + lastCoin.position.z > runner.position.z + 12) {
+            scene.remove(trail.group);
+            coinTrails.splice(trailIndex, 1);
+          }
+        }
+
+        const nextScore = Math.floor(runDistance) + coinCount * 5;
+        if (nextScore !== score) {
+          score = nextScore;
+          onScoreChangeRef.current(score, Math.floor(runDistance), coinCount);
+        }
       }
 
-      if (time >= nextTrainSpawnAt) {
-        if (movingTrains.length < 5) createTrain(Math.floor(Math.random() * trackCenters.length));
-        nextTrainSpawnAt = time + 1700 + Math.random() * 1500;
+      if (introComplete && !gameOver && time >= nextTrainSpawnAt) {
+        const activeGameplayTrains = movingTrains.filter((train) => train.direction === 1).length;
+        if (activeGameplayTrains < 4) {
+          const laneOrder = trackCenters.map((_, laneIndex) => laneIndex);
+          for (let laneIndex = laneOrder.length - 1; laneIndex > 0; laneIndex -= 1) {
+            const swapIndex = Math.floor(Math.random() * (laneIndex + 1));
+            [laneOrder[laneIndex], laneOrder[swapIndex]] = [laneOrder[swapIndex], laneOrder[laneIndex]];
+          }
+          const spawnPair = activeGameplayTrains <= 2 && Math.random() < 0.4;
+          const trainCount = spawnPair ? 2 : 1;
+          const trainLanes = laneOrder.slice(0, trainCount);
+          const openLanes = laneOrder.slice(trainCount);
+          const startZ = -132;
+          for (const laneIndex of trainLanes) createTrain(laneIndex, undefined, startZ);
+
+          // One trail occupies one clear track, parallel to this train pattern.
+          const coinLane = openLanes[Math.floor(Math.random() * openLanes.length)];
+          createCoinTrail(coinLane, startZ);
+        }
+        nextTrainSpawnAt = time + 2900 + Math.random() * 900;
       }
-      for (let index = movingTrains.length - 1; index >= 0; index -= 1) {
-        const train = movingTrains[index];
-        train.group.position.z += train.speed * delta;
-        if ((train.direction === 1 && train.group.position.z > 25) || (train.direction === -1 && train.group.position.z < -205)) {
-          scene.remove(train.group);
-          train.dispose();
-          movingTrains.splice(index, 1);
+      if (!gameOver) {
+        for (let index = movingTrains.length - 1; index >= 0; index -= 1) {
+          const train = movingTrains[index];
+          train.group.position.z += train.speed * delta;
+          if ((train.direction === 1 && train.group.position.z > 25) || (train.direction === -1 && train.group.position.z < -205)) {
+            scene.remove(train.group);
+            train.dispose();
+            movingTrains.splice(index, 1);
+          }
+        }
+
+        if (introComplete) {
+          const runnerHalfWidth = 0.42 * runnerScale;
+          const runnerHalfDepth = 0.44 * runnerScale;
+          const collision = movingTrains.some((train) => {
+            if (train.direction !== 1) return false;
+            const trainMinZ = train.group.position.z - train.rearExtent;
+            const trainMaxZ = train.group.position.z + train.frontExtent;
+            const runnerMinZ = runner.position.z - runnerHalfDepth;
+            const runnerMaxZ = runner.position.z + runnerHalfDepth;
+            return Math.abs(train.group.position.x - runner.position.x) <= train.halfWidth + runnerHalfWidth
+              && runnerMaxZ >= trainMinZ
+              && runnerMinZ <= trainMaxZ;
+          });
+          if (collision) explodeRunner(time);
+        }
+      }
+
+      if (gameOver) {
+        const elapsedDeath = Math.max(0, (time - gameOverStartedAt) / 1000);
+        for (const debris of explosionDebris) {
+          if (debris.flash) {
+            const progress = THREE.MathUtils.clamp(elapsedDeath / 0.22, 0, 1);
+            debris.mesh.scale.setScalar(0.25 + progress * 4.2);
+            const flashMaterial = debris.mesh.material as THREE.MeshBasicMaterial;
+            flashMaterial.opacity = 0.9 * (1 - progress);
+            continue;
+          }
+          debris.velocity.y -= 13 * delta;
+          debris.mesh.position.addScaledVector(debris.velocity, delta);
+          debris.mesh.rotation.x += debris.spin.x * delta;
+          debris.mesh.rotation.y += debris.spin.y * delta;
+          debris.mesh.rotation.z += debris.spin.z * delta;
+        }
+        if (elapsedDeath >= 1.15 && !gameOverReported) {
+          gameOverReported = true;
+          explosionDebris.forEach(({ mesh, flash }) => {
+            scene.remove(mesh);
+            if (flash) (mesh.material as THREE.Material).dispose();
+          });
+          explosionDebris.length = 0;
+          onGameOverRef.current({ score, distance: Math.floor(runDistance), coins: coinCount });
         }
       }
       renderer.render(scene, camera);
