@@ -4,6 +4,7 @@ import { TRANSIT_STATIONS } from "@/app/_data/transit/stations";
 import type { TransitStation } from "@/app/_data/transit/types";
 import { getStationHint } from "@/app/_lib/station-hints";
 import { useAppState } from "@/app/_state/app-state";
+import ConfettiBurst from "@/app/play/_components/confetti-burst";
 import { useMemo, useState } from "react";
 
 type GuessResult = { won: boolean; answer: string };
@@ -80,6 +81,7 @@ export default function StopleGame() {
 
   return (
     <section className="stople-game" aria-label="Stople station guessing game">
+      {result?.won && <ConfettiBurst key={target.id} />}
       <svg className="stople-map-decoration" viewBox="0 0 1000 800" preserveAspectRatio="xMidYMid slice" aria-hidden="true" focusable="false">
         <g fill="none" strokeWidth="9" strokeLinecap="round" strokeLinejoin="round">
           <path d="M-20 80 L760 860" stroke="#00843D" />
