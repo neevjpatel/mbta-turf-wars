@@ -1057,20 +1057,20 @@ body { display: grid; grid-template-rows: 64px minmax(0, 1fr); }
 .stople-answer strong { color: #172930; }
 .stople-answer.won { background: #e0f0df; }.stople-answer.lost { background: #f4e1da; }
 
-.charlie-run-experience { height: 100%; display: grid; grid-template-rows: auto auto minmax(0, 1fr) auto; gap: 11px; overflow: auto; padding: 16px clamp(14px, 3vw, 34px); background: radial-gradient(circle at 50% 0, #234858, #0b171d 66%); color: #f1f4ec; }
-.runner-game-header { display: flex; align-items: end; justify-content: space-between; gap: 14px; }
-.runner-game-header .eyebrow { margin: 0 0 4px; color: #81c5da; font-size: 9px; font-weight: 950; letter-spacing: .12em; text-transform: uppercase; }
-.runner-game-header h1 { margin: 0; font-size: clamp(23px, 3vw, 38px); line-height: .95; text-transform: uppercase; }
-.runner-total { display: grid; gap: 2px; text-align: right; }.runner-total small { color: #9eb0b4; font-size: 8px; font-weight: 900; letter-spacing: .1em; }.runner-total strong { color: #f4c64f; font: 900 14px "Courier New", monospace; }
-.runner-game-controls { display: flex; align-items: end; flex-wrap: wrap; gap: 9px; }
-.runner-game-controls label { display: grid; gap: 4px; color: #a8bbbf; font-size: 8px; font-weight: 900; letter-spacing: .08em; text-transform: uppercase; }
-.runner-game-controls select { min-width: 130px; border: 1px solid #ffffff35; padding: 7px 9px; background: #091418; color: #fff; font-size: 11px; }
-.runner-delay-toggle { border: 1px solid #a77725; padding: 7px 10px; background: #30220e; color: #f0c24d; font-size: 9px; font-weight: 900; text-transform: uppercase; }.runner-delay-toggle.active { background: #a94b13; color: #fff; }
-.runner-play-area { min-height: 0; display: grid; align-content: center; justify-items: center; }
-.runner-play-area > * { width: min(700px, 100%); }
-.runner-result { display: grid; justify-items: center; gap: 9px; padding: 24px; border: 2px solid #4c666d; background: #091418; text-align: center; }
-.runner-result-icon { font-size: 38px; }.runner-result p { margin: 0; color: #b6c7c9; font-size: 13px; font-weight: 800; }.runner-result strong { color: #f4c64f; font: 950 22px "Courier New", monospace; }.runner-result button { border: 2px solid #0b201b; padding: 9px 18px; background: #52d38a; color: #0b1914; font-size: 10px; font-weight: 950; text-transform: uppercase; }
-.runner-instructions { margin: 0; color: #85999e; font-size: 9px; text-align: center; }
+.charlie-run-scene { position: absolute; z-index: 0; inset: 0; width: 100%; height: 100%; min-height: 0; overflow: hidden; background: #132d3b; }
+.charlie-run-scene canvas { display: block; width: 100%; height: 100%; }
+.charlie-run-game { position: relative; isolation: isolate; width: 100%; height: 100%; min-height: 0; overflow: hidden; }
+.charlie-run-score { position: absolute; z-index: 5; top: 16px; left: 16px; display: grid; gap: 3px; padding: 10px 14px; border: 2px solid #f0e6c5; border-radius: 8px; background: #15252ee8; color: #fff9e8; box-shadow: 0 3px 0 #07131899; font-variant-numeric: tabular-nums; pointer-events: none; }
+.charlie-run-score strong { font-size: 20px; line-height: 1.1; letter-spacing: .04em; }
+.charlie-run-score span { color: #d0d9d6; font-size: 12px; font-weight: 700; }
+.charlie-run-result-backdrop { position: absolute; z-index: 10; inset: 0; display: grid; place-items: center; padding: 20px; background: #071318a8; }
+.charlie-run-result { width: min(100%, 360px); padding: 24px; border: 3px solid #16272d; border-radius: 16px; background: #f0eee2; color: #14272e; box-shadow: 0 12px 0 #07131880; text-align: center; }
+.charlie-run-result-kicker { margin: 0; color: #66777a; font-size: 11px; font-weight: 900; letter-spacing: .16em; text-transform: uppercase; }
+.charlie-run-result h2 { margin: 4px 0 18px; font-size: 32px; font-weight: 950; text-transform: uppercase; }
+.charlie-run-result > p:not(.charlie-run-result-kicker) { display: flex; justify-content: space-between; margin: 8px 0; font-weight: 700; }
+.charlie-run-result .charlie-run-points-result { margin-top: 16px !important; padding-top: 12px; border-top: 2px solid #c9cec4; color: #12663c; font-size: 19px; }
+.charlie-run-result button { width: 100%; margin-top: 16px; border: 2px solid #14232a; border-radius: 999px; padding: 12px 18px; background: #00843d; color: #fff; font-size: 13px; font-weight: 900; text-transform: uppercase; cursor: pointer; }
+@media (max-width: 520px) { .charlie-run-score { top: 10px; left: 10px; padding: 8px 10px; }.charlie-run-score strong { font-size: 17px; } }
 
 .history-page { height: 100%; overflow-y: auto; background: #eff0e7; color: #172930; scroll-padding-top: 20px; }
 .history-hero { min-height: 360px; display: flex; align-items: center; gap: clamp(28px, 6vw, 100px); padding: 70px clamp(40px, 9vw, 170px); background: radial-gradient(circle at 75% 20%, #ffe5a8 0 8%, transparent 26%), linear-gradient(145deg, #69b8dd 0 45%, #a9d5bd 46% 63%, #9e5a43 64%); border-bottom: 8px solid #172930; }

@@ -1,63 +1,70 @@
 "use client";
 
-import { INITIAL_STOPS } from "@/app/_data/transit/stops";
-import { useState } from "react";
-import CharlieRunGame from "./charlie-run-game";
-import { DIFFICULTIES } from "@/app/_data/game-catalog";
-import type { TransitLine } from "@/app/_data/transit/types";
+import dynamic from "next/dynamic";
+import { useCallback, useEffect, useState } from "react";
 import { useAppState } from "@/app/_state/app-state";
+import type { DifficultyId } from "@/app/_data/game-catalog";
+import { usePlay } from "@/app/_stats/player";
 
-type RunResult = { points: number; captured: boolean; station: string };
+const CharlieRunScene = dynamic(() => import("./charlie-run-scene"), {
+  ssr: false,
+  loading: () => <section className="charlie-run-scene" aria-label="Charlie Run loading" />,
+});
+
+type RunStats = { score: number; distance: number; coins: number };
+type RunResult = RunStats & { points: number };
+const RUN_SPEED: Record<DifficultyId, number> = { easy: 15, medium: 30, hard: 50, extreme: 80 };
 
 export default function CharlieRunExperience() {
   const { difficulty } = useAppState();
-  const line = DIFFICULTIES[difficulty].lineShort as TransitLine;
-  const lineStops = INITIAL_STOPS.filter((stop) => stop.line === line);
-  const [selectedStopId, setSelectedStopId] = useState(lineStops[0]?.id ?? INITIAL_STOPS[0].id);
-  const selectedSchool = "you"; // Charlie Run is personal: no campus, points go to the player only
-  const [isDelayed, setIsDelayed] = useState(false);
-  const [runNumber, setRunNumber] = useState(0);
+  return <CharlieRunRun key={difficulty} difficulty={difficulty} />;
+}
+
+function CharlieRunRun({ difficulty }: { difficulty: DifficultyId }) {
+  const play = usePlay("charlie-run");
+  const [score, setScore] = useState(0);
+  const [distance, setDistance] = useState(0);
+  const [coins, setCoins] = useState(0);
   const [result, setResult] = useState<RunResult | null>(null);
-  const [totalPoints, setTotalPoints] = useState(0);
-  const station = lineStops.find((stop) => stop.id === selectedStopId) ?? lineStops[0] ?? INITIAL_STOPS[0];
 
-  const finishRun = (points: number, captured: boolean) => {
-    setTotalPoints((previous) => previous + points);
-    setResult({ points, captured, station: station.name });
-  };
+  useEffect(() => play.start(), [play]);
 
-  const startAgain = () => {
-    setResult(null);
-    setRunNumber((previous) => previous + 1);
-  };
+  const finishRun = useCallback((runStats: RunStats) => {
+    const runResult = { ...runStats, points: Math.round(runStats.score / 20) };
+    setResult(runResult);
+    play.end(runResult.points, {
+      run_score: runResult.score,
+      distance_m: runResult.distance,
+      coins: runResult.coins,
+    });
+  }, [play]);
+
+  const updateHud = useCallback((nextScore: number, nextDistance: number, nextCoins: number) => {
+    setScore(nextScore);
+    setDistance(nextDistance);
+    setCoins(nextCoins);
+  }, []);
 
   return (
-    <section className="charlie-run-experience" aria-label="Charlie Run game">
-      <div className="runner-game-header">
-        <div><p className="eyebrow">Endless runner · collect Charlie Coins</p><h1>Outrun the T.</h1></div>
-        <div className="runner-total"><small>RUN TOTAL</small><strong>{totalPoints} pts</strong></div>
+    <div className="charlie-run-game">
+      <CharlieRunScene speed={RUN_SPEED[difficulty]} onScoreChange={updateHud} onGameOver={finishRun} />
+      <div className="charlie-run-score" aria-live="polite" aria-atomic="true">
+        <strong>SCORE&nbsp; {score.toLocaleString()}</strong>
+        <span>{distance.toLocaleString()} m&nbsp; · &nbsp;{coins} coins</span>
       </div>
-      <div className="runner-game-controls">
-        <label>Station · {line} Line
-          <select value={station.id} onChange={(event) => setSelectedStopId(event.target.value)}>
-            {lineStops.map((stop) => <option key={stop.id} value={stop.id}>{stop.name}</option>)}
-          </select>
-        </label>
-        <button type="button" className={`runner-delay-toggle ${isDelayed ? "active" : ""}`} onClick={() => setIsDelayed((value) => !value)} aria-pressed={isDelayed}>{isDelayed ? "3× Delay bonus on" : "Enable 3× Delay bonus"}</button>
-      </div>
-      <div className="runner-play-area">
-        {result ? (
-          <div className="runner-result" role="status">
-            <span className="runner-result-icon">{result.captured ? "🏆" : "💰"}</span>
-            <p>{result.captured ? `${result.station} captured for ${selectedSchool}!` : `Coins banked for ${selectedSchool}.`}</p>
-            <strong>+{result.points} pts</strong>
-            <button type="button" onClick={startAgain}>Run again</button>
-          </div>
-        ) : (
-          <CharlieRunGame key={`${station.id}-${selectedSchool}-${runNumber}`} stationName={station.name} line={line} isDelayed={isDelayed} selectedSchool={selectedSchool} onCompleteRun={finishRun} />
-        )}
-      </div>
-      <p className="runner-instructions">Use ← → to switch lanes, ↑ to jump, and ↓ to slide. On touch screens, swipe or use the on-screen controls.</p>
-    </section>
+      {result && (
+        <div className="charlie-run-result-backdrop">
+          <section className="charlie-run-result" role="dialog" aria-modal="true" aria-labelledby="charlie-run-result-title">
+            <p className="charlie-run-result-kicker">End of run</p>
+            <h2 id="charlie-run-result-title">Run over</h2>
+            <p>Score <strong>{result.score.toLocaleString()}</strong></p>
+            <p>Distance <strong>{result.distance.toLocaleString()} m</strong></p>
+            <p>Coins <strong>{result.coins}</strong></p>
+            <p className="charlie-run-points-result">Points awarded <strong>{result.points}</strong></p>
+            <button type="button" onClick={() => window.location.reload()}>Run again</button>
+          </section>
+        </div>
+      )}
+    </div>
   );
 }
