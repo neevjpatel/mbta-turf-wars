@@ -1008,6 +1008,21 @@ body { display: grid; grid-template-rows: 64px minmax(0, 1fr); }
 .stople-actions button:focus-visible, .stople-entry button:focus-visible, .stople-search-wrap input:focus-visible, .stople-search-results button:focus-visible { outline: 3px solid #1d647c; outline-offset: 2px; }
 .stople-retries { min-width: 126px; border: 2px solid #172930; border-radius: 9px; padding: 8px 12px; background: #f8f5e8; box-shadow: 0 3px 0 #172930; color: #52656b; font-size: 11px; font-weight: 800; text-align: center; }
 .stople-retries strong { color: #172930; font: 900 19px "Courier New", monospace; }
+.stople-retries-wrong { animation: stople-retries-shake 750ms ease-out, stople-retries-flash 750ms ease-out; }
+.stople-retries-wrong strong { animation: stople-retries-count-flash 750ms ease-out; }
+.stople-retries-correct { animation: stople-retries-flash-green 750ms ease-out; }
+.stople-retries-correct strong { animation: stople-retries-count-flash-green 750ms ease-out; }
+@keyframes stople-retries-shake { 0%, 100% { transform: translateX(0); } 18% { transform: translateX(-4px); } 36% { transform: translateX(4px); } 54% { transform: translateX(-3px); } 72% { transform: translateX(2px); } }
+@keyframes stople-retries-flash { 0%, 100% { border-color: #172930; background: #f8f5e8; } 30%, 70% { border-color: #b42318; background: #f4cfca; } }
+@keyframes stople-retries-count-flash { 0%, 100% { color: #172930; } 30%, 70% { color: #b42318; } }
+@keyframes stople-retries-flash-green { 0%, 100% { border-color: #172930; background: #f8f5e8; } 30%, 70% { border-color: #287248; background: #d8eedb; } }
+@keyframes stople-retries-count-flash-green { 0%, 100% { color: #172930; } 30%, 70% { color: #287248; } }
+@media (prefers-reduced-motion: reduce) {
+  .stople-retries-wrong { animation: none !important; border-color: #b42318; background: #f4cfca; }
+  .stople-retries-wrong strong { animation: none !important; color: #b42318; }
+  .stople-retries-correct { animation: none !important; border-color: #287248; background: #d8eedb; }
+  .stople-retries-correct strong { animation: none !important; color: #287248; }
+}
 .stople-content { width: min(860px, 100%); min-height: 0; display: flex; flex-direction: column; justify-content: flex-start; margin: 0 auto; padding: 0; }
 .stople-title { margin: 0; padding-block: clamp(32px, 6vh, 72px); color: #172930; font-size: clamp(38px, 6vw, 56px); font-weight: 950; letter-spacing: -.045em; line-height: 1; text-align: center; }
 .stople-entry { margin: 0 0 16px; }

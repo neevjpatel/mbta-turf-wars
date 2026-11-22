@@ -43,6 +43,8 @@ export default function StopleGame() {
   const [guesses, setGuesses] = useState<GuessEntry[]>([]);
   const [result, setResult] = useState<GuessResult | null>(null);
   const [hintShown, setHintShown] = useState(false);
+  const [feedbackPulse, setFeedbackPulse] = useState(0);
+  const [guessFeedback, setGuessFeedback] = useState<"wrong" | "correct" | null>(null);
   const guessesLeft = Math.max(0, maxGuesses - guesses.length);
 
   const submitGuess = () => {
@@ -54,6 +56,8 @@ export default function StopleGame() {
       setGuesses((previous) => [...previous, { station: guess, distance: "0.00", direction: "Target", correct: true }]);
       setResult({ won: true, answer: target.name });
       setGuessId(null);
+      setFeedbackPulse((previous) => previous + 1);
+      setGuessFeedback("correct");
       return;
     }
 
@@ -61,6 +65,8 @@ export default function StopleGame() {
     const updated = [...guesses, { station: guess, distance: hint.distance, direction: hint.direction, correct: false }];
     setGuesses(updated);
     setGuessId(null);
+    setFeedbackPulse((previous) => previous + 1);
+    setGuessFeedback("wrong");
     if (updated.length >= maxGuesses) setResult({ won: false, answer: target.name });
   };
 
@@ -70,6 +76,7 @@ export default function StopleGame() {
     setGuesses([]);
     setResult(null);
     setHintShown(false);
+    setGuessFeedback(null);
   };
 
   const lineHint = target.lines.map((targetLine) => `${targetLine} Line`).join(" · ");
@@ -81,7 +88,7 @@ export default function StopleGame() {
           <button type="button" onClick={startNewGame}>New game</button>
           <button type="button" onClick={() => setHintShown(true)} disabled={hintShown || Boolean(result)} aria-pressed={hintShown}>Hint</button>
         </div>
-        <div className="stople-retries" role="status" aria-live="polite">
+        <div key={feedbackPulse} className={`stople-retries${guessFeedback ? ` stople-retries-${guessFeedback}` : ""}`} role="status" aria-live="polite">
           <strong>{guessesLeft}</strong> {guessesLeft === 1 ? "guess" : "guesses"} left
         </div>
       </header>
@@ -91,7 +98,15 @@ export default function StopleGame() {
         <form className="stople-entry" onSubmit={(event) => { event.preventDefault(); submitGuess(); }}>
           <label htmlFor="stople-station-search" className="sr-only">Search MBTA stations</label>
           <div>
-            <StationSearch selectedId={guessId} excludedIds={guesses.map((entry) => entry.station.id)} disabled={Boolean(result)} onSelect={setGuessId} />
+            <StationSearch
+              selectedId={guessId}
+              excludedIds={guesses.map((entry) => entry.station.id)}
+              disabled={Boolean(result)}
+              onSelect={(id) => {
+                setGuessId(id);
+                setGuessFeedback(null);
+              }}
+            />
             <button type="submit" disabled={!guessId || Boolean(result)}>Submit</button>
           </div>
         </form>
