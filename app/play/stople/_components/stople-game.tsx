@@ -6,6 +6,9 @@ import { getStationHint } from "@/app/_lib/station-hints";
 import { useAppState } from "@/app/_state/app-state";
 import ConfettiBurst from "@/app/play/_components/confetti-burst";
 import { useMemo, useState } from "react";
+import { useEffect } from "react";
+import { usePlay } from "@/app/_stats/player";
+import { stoplePoints } from "@/lib/scoring";
 
 type GuessResult = { won: boolean; answer: string };
 type GuessEntry = { station: TransitStation; distance: string; direction: string; correct: boolean };
@@ -44,6 +47,8 @@ export default function StopleGame() {
   const [feedbackPulse, setFeedbackPulse] = useState(0);
   const [guessFeedback, setGuessFeedback] = useState<"wrong" | "correct" | null>(null);
   const guessesLeft = Math.max(0, maxGuesses - guesses.length);
+  const play = usePlay("stople");
+  useEffect(() => play.start(), [play, target]);
 
   const submitGuess = () => {
     if (!guessId || result) return;
@@ -53,6 +58,7 @@ export default function StopleGame() {
     if (guess.id === target.id) {
       setGuesses((previous) => [...previous, { station: guess, distance: "0.00", direction: "Target", correct: true }]);
       setResult({ won: true, answer: target.name });
+      play.end(stoplePoints(difficulty, true, maxGuesses - guesses.length - 1), { won: true, guesses: guesses.length + 1, station: target.id, hint: hintShown });
       setGuessId(null);
       setFeedbackPulse((previous) => previous + 1);
       setGuessFeedback("correct");
@@ -66,6 +72,7 @@ export default function StopleGame() {
     setFeedbackPulse((previous) => previous + 1);
     setGuessFeedback("wrong");
     if (updated.length >= maxGuesses) setResult({ won: false, answer: target.name });
+    if (updated.length >= maxGuesses) play.end(0, { won: false, guesses: updated.length, station: target.id, hint: hintShown });
   };
 
   const startNewGame = () => {
