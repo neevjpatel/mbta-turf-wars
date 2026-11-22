@@ -35,7 +35,7 @@ function editDistance(first: string, second: string) {
 
 export default function StopleGame() {
   const { difficulty } = useAppState();
-  const maxGuesses = { easy: 6, medium: 4, hard: 2, extreme: 1 }[difficulty];
+  const maxGuesses = { easy: 6, medium: 4, hard: 3, extreme: 2 }[difficulty];
   const [target, setTarget] = useState<TransitStation>(() => randomStation());
   const [guessId, setGuessId] = useState<string | null>(null);
   const [guesses, setGuesses] = useState<GuessEntry[]>([]);
