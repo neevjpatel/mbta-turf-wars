@@ -292,3 +292,49 @@ export function gameTimeSummary() {
     )
     .all();
 }
+
+// ---------- Turf Wars map ----------
+
+export type StationStats = {
+  owner: string | null;                     // school that captured it most recently (null = nobody has captured it yet)
+  schools: { school: string; points: number; captures: number }[];
+  attempts: number;                         // every answered challenge here, right or wrong, by anyone signed in
+  correct: number;
+  last_capture: string | null;
+};
+
+/** Per station: which schools have captured it and how much. The owner is whoever captured it last (turf changes hands). */
+export function turfStations(): Record<string, StationStats> {
+  const db = getDb();
+  const bySchool = db
+    .prepare(
+      `SELECT json_extract(p.details, '$.station') AS station, p.school,
+              SUM(p.score) AS points, COUNT(*) AS captures, MAX(p.ended_at) AS last_capture
+       FROM finished_plays p JOIN games g USING(game_id)
+       WHERE g.name = 'turf-wars' AND p.school IS NOT NULL AND p.score > 0
+         AND json_extract(p.details, '$.station') IS NOT NULL
+       GROUP BY station, p.school
+       ORDER BY station, points DESC, last_capture DESC`
+    )
+    .all() as { station: string; school: string; points: number; captures: number; last_capture: string }[];
+  const tries = db
+    .prepare(
+      `SELECT json_extract(p.details, '$.station') AS station, COUNT(*) AS attempts, SUM(p.score > 0) AS correct
+       FROM finished_plays p JOIN games g USING(game_id)
+       WHERE g.name = 'turf-wars' AND json_extract(p.details, '$.station') IS NOT NULL
+       GROUP BY station`
+    )
+    .all() as { station: string; attempts: number; correct: number }[];
+
+  const out: Record<string, StationStats> = {};
+  for (const t of tries) out[t.station] = { owner: null, schools: [], attempts: t.attempts, correct: t.correct, last_capture: null };
+  for (const row of bySchool) {
+    const s = (out[row.station] ??= { owner: null, schools: [], attempts: 0, correct: 0, last_capture: null });
+    s.schools.push({ school: row.school, points: row.points, captures: row.captures });
+    if (!s.last_capture || row.last_capture > s.last_capture) {
+      s.last_capture = row.last_capture;
+      s.owner = row.school; // most recent capture holds the turf
+    }
+  }
+  return out;
+}
