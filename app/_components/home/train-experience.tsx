@@ -35,7 +35,7 @@ function GameStopPanel({ game, onPlay, disabled }: { game: (typeof GAMES)[number
   const playable = game.availability === "playable";
   return (
     <section className="game-stop-panel" aria-labelledby="game-stop-title">
-      <div className="game-stop-art"><GameArtwork game={game.id} /><span className="stop-number">STOP {String(GAMES.findIndex((entry) => entry.id === game.id) + 1).padStart(2, "0")}</span></div>
+      <div className="game-stop-art"><GameArtwork game={game.id} /></div>
       <div className="game-stop-copy">
         <p className="eyebrow">{game.subtitle}</p>
         <h1 id="game-stop-title">{game.name}</h1>
