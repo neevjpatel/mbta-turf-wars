@@ -1,6 +1,6 @@
-import type { StopData } from "../_data/transit/types";
+import type { TransitStation } from "../_data/transit/types";
 
-export function getStationHint(guess: StopData, target: StopData) {
+export function getStationHint(guess: TransitStation, target: TransitStation) {
   const radians = (degrees: number) => (degrees * Math.PI) / 180;
   const earthRadiusMiles = 3958.8;
   const deltaLatitude = radians(target.lat - guess.lat);
@@ -18,6 +18,6 @@ export function getStationHint(guess: StopData, target: StopData) {
   return {
     distance: distanceMiles.toFixed(2),
     direction: compassDirections[Math.round(bearing / 45) % compassDirections.length],
-    sameLine: guess.line === target.line,
+    sameLine: guess.lines.some((line) => target.lines.includes(line)),
   };
 }
