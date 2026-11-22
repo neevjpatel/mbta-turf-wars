@@ -12,7 +12,7 @@ import { useAppState } from "@/app/_state/app-state";
 import { authClient } from "@/lib/auth-client";
 import { SCHOOL_GAMES, type School } from "@/lib/schools";
 import { CAMPUS_COLORS } from "@/app/_data/campuses";
-import { recordEnd, recordStart, type GameName } from "@/lib/statsClient";
+import { recordEnd, recordStart, type GameName, type PlayStats } from "@/lib/statsClient";
 
 export type Player = {
   status: "loading" | "guest" | "needs-username" | "ready";
@@ -21,7 +21,23 @@ export type Player = {
   school: School | null;
 };
 
-type Celebration = { id: number; points: number; game: GameName; guest: boolean; school: School | null; detail?: string };
+type RoundDetail = { lines: string[]; personalBest: boolean };
+type Celebration = { id: number; points: number; game: GameName; guest: boolean; school: School | null; detail?: RoundDetail };
+
+const secs = (s: number) => `${Math.round(s)}s`;
+
+/** Concrete, changing facts about the round just played: rank, who's next, and this round vs the average. */
+function describeRound(game: GameName, s: PlayStats): RoundDetail {
+  const label = GAME_LABELS[game];
+  const standing =
+    s.rank === 1
+      ? `You're #1 of ${s.players} in ${label}!`
+      : s.next_username && s.points_to_next != null
+        ? `#${s.rank} of ${s.players} in ${label} · ${s.points_to_next === 0 ? "tied with" : `${s.points_to_next} pts behind`} @${s.next_username} (#${s.next_rank})`
+        : `#${s.rank} of ${s.players} in ${label}`;
+  const round = `This round: +${s.score} pts in ${secs(s.duration_sec)} · average round: +${s.avg_round_score} in ${secs(s.avg_round_sec)}`;
+  return { lines: [standing, round, `${s.total_points} ${label} points total`], personalBest: s.score > 0 && s.personal_best === 1 && s.prev_best != null };
+}
 
 type PlayerContextValue = {
   player: Player;
@@ -29,7 +45,7 @@ type PlayerContextValue = {
   refresh: () => Promise<void>;
   notify: (message: string) => void;
   celebrate: (c: Omit<Celebration, "id">) => number;
-  addCelebrationDetail: (id: number, detail: string) => void;
+  addCelebrationDetail: (id: number, detail: RoundDetail) => void;
   signIn: () => void;
   signOut: () => void;
 };
@@ -93,7 +109,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     return id;
   }, []);
 
-  const addCelebrationDetail = useCallback((id: number, detail: string) => {
+  const addCelebrationDetail = useCallback((id: number, detail: RoundDetail) => {
     setCelebration((current) => (current?.id === id ? { ...current, detail } : current));
   }, []);
 
@@ -169,12 +185,9 @@ export function usePlay(game: GameName) {
           .then((playId) => recordEnd(playId, score, details))
           .then((stats) => {
             if (!stats || !ctx) return;
-            const detail =
-              stats.players > 1
-                ? `#${stats.rank} of ${stats.players} in ${GAME_LABELS[game]} · ahead of ${stats.better_than_pct}% of players · ${stats.total_points} pts total`
-                : `${stats.total_points} ${GAME_LABELS[game]} points total`;
+            const detail = describeRound(game, stats);
             if (cardId) ctx.addCelebrationDetail(cardId, detail);
-            else ctx.notify(`Round saved · ${detail}`);
+            else ctx.notify(`Round saved · ${detail.lines[0]}`);
           });
       },
     }),
@@ -215,7 +228,10 @@ function CelebrationCard({ celebration: c, onClose }: { celebration: Celebration
             </button>
           </div>
         ) : (
-          <p className="mt-2 min-h-4 text-xs text-[#52656b]">{c.detail ?? "Saving to your profile…"}</p>
+          <div className="mt-2 min-h-4 space-y-0.5 text-xs text-[#52656b]">
+            {c.detail?.personalBest && <p className="font-black uppercase text-[#7a5b16]">New personal best!</p>}
+            {c.detail ? c.detail.lines.map((line) => <p key={line}>{line}</p>) : <p>Saving to your profile…</p>}
+          </div>
         )}
         <button type="button" onClick={onClose} className="mt-2 text-xs font-semibold text-[#52656b] underline">Close</button>
       </div>

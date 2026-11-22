@@ -17,11 +17,17 @@ type Profile = {
   username: string;
   school: string | null;
   totals: { plays: number; total_points: number; school_points: number; minutes_played: number };
-  games: { game: string; plays: number; total_points: number; best_score: number | null; rank: number | null; players: number | null; better_than_pct: number | null; avg_round_sec: number | null }[];
+  games: { game: string; plays: number; total_points: number; best_score: number | null; rank: number | null; players: number | null; better_than_pct: number | null; avg_round_sec: number | null; compare: Compare | null }[];
   schoolStanding: SchoolRow | null;
   history: HistoryRow[];
 };
-type HistoryRow = { ended_at: string; game: string; score: number; cumulative: number };
+type HistoryRow = { ended_at: string; game: string; score: number; duration_sec: number; cumulative: number };
+type Compare = {
+  median_total: number; top_total: number; top_username: string;
+  next_username: string | null; points_to_next: number | null;
+  my_avg_round: number; all_avg_round: number; my_avg_sec: number; all_avg_sec: number;
+  my_scoring_pct: number; all_scoring_pct: number;
+};
 
 const page: CSSProperties = { justifyContent: "flex-start" };
 const pad = (n: number) => String(n).padStart(2, "0");
@@ -61,7 +67,7 @@ export function Leaderboards() {
   const { data, error } = useJson<Boards>("/api/leaderboard");
 
   return (
-    <main className="utility-page leaderboard-page" style={page}>
+    <main className="utility-page leaderboard-page [&>*]:shrink-0" style={page}>
       <p className="eyebrow">Live standings</p>
       <h1>Leaderboards</h1>
       <p className="utility-intro">Only signed-in players are ranked. Schools earn points from their students&apos; Turf Wars captures; every other game is personal.</p>
@@ -156,7 +162,7 @@ function ProfileContent() {
   }
 
   return (
-    <main className="utility-page profile-page" style={page}>
+    <main className="utility-page profile-page [&>*]:shrink-0" style={page}>
       <span className="large-avatar" style={player.school ? { backgroundColor: CAMPUS_COLORS[player.school] } : undefined}>
         {player.username!.slice(0, 2).toUpperCase()}
       </span>
@@ -186,6 +192,8 @@ function ProfileContent() {
               </div>
             ))}
           </div>
+          <SectionTitle eyebrow="You vs everyone else" title="How you compare" />
+          <Comparisons games={data.games} />
           <SectionTitle eyebrow="Your personal growth" title="Points over time" />
           <GrowthChart history={data.history} />
           <RecentPlays history={data.history} />
@@ -268,28 +276,115 @@ function GrowthChart({ history }: { history: HistoryRow[] }) {
   );
 }
 
-/** The last 10 rounds, newest first (also the table view of the chart above). */
+/** Your last 50 rounds, newest first, in a box that shows about 5 at a time and scrolls (also the chart's table view). */
 function RecentPlays({ history }: { history: HistoryRow[] }) {
   if (history.length === 0) return null;
-  const recent = history.slice(-10).reverse();
+  const recent = history.slice(-50).reverse();
+  const th = "sticky top-0 bg-[#f7f5e9] py-1.5 font-semibold";
   return (
-    <div style={card} className="mt-6 overflow-x-auto p-4 text-left">
-      <p className="mb-2 text-sm font-black uppercase">Recent rounds</p>
-      <table className="w-full text-sm">
-        <thead style={{ color: INK_MUTED }}>
-          <tr><th className="py-1 text-left font-semibold">When</th><th className="text-left font-semibold">Game</th><th className="text-right font-semibold">Points</th><th className="text-right font-semibold">Total</th></tr>
-        </thead>
-        <tbody>
-          {recent.map((h, i) => (
-            <tr key={`${h.ended_at}-${i}`} className="border-t" style={{ borderColor: GRID }}>
-              <td className="py-1.5">{new Date(`${h.ended_at.replace(" ", "T")}Z`).toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}</td>
-              <td>{label(h.game)}</td>
-              <td className="text-right font-bold">+{h.score}</td>
-              <td className="text-right">{h.cumulative}</td>
+    <div style={card} className="mt-6 p-4 text-left">
+      <p className="mb-2 flex justify-between text-sm font-black uppercase">
+        <span>Recent rounds</span>
+        <span className="font-semibold normal-case" style={{ color: INK_MUTED }}>{recent.length} shown · scroll for more</span>
+      </p>
+      <div className="max-h-[14.5rem] overflow-y-auto overflow-x-auto" tabIndex={0} aria-label="Recent rounds, scrollable">
+        <table className="w-full text-sm">
+          <thead style={{ color: INK_MUTED }}>
+            <tr>
+              <th className={`${th} text-left`}>When</th>
+              <th className={`${th} text-left`}>Game</th>
+              <th className={`${th} text-right`}>Points</th>
+              <th className={`${th} text-right`}>Round time</th>
+              <th className={`${th} text-right`}>Total</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {recent.map((h, i) => (
+              <tr key={`${h.ended_at}-${i}`} className="border-t" style={{ borderColor: GRID }}>
+                <td className="py-2 pr-2">{new Date(`${h.ended_at.replace(" ", "T")}Z`).toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}</td>
+                <td className="pr-2">{label(h.game)}</td>
+                <td className="text-right font-bold">+{h.score}</td>
+                <td className="text-right">{formatSeconds(h.duration_sec)}</td>
+                <td className="text-right">{h.cumulative}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+function formatSeconds(s: number | null) {
+  if (s == null) return "–";
+  if (s < 60) return `${s.toFixed(1)}s`;
+  return `${Math.floor(s / 60)}m ${String(Math.round(s % 60)).padStart(2, "0")}s`;
+}
+
+/** Per game: where your total sits between 0 and the top player, plus your per-round numbers vs everyone's. */
+function Comparisons({ games }: { games: Profile["games"] }) {
+  const played = games.filter((g) => g.plays > 0 && g.compare);
+  if (played.length === 0) {
+    return <div style={card} className="mt-4 p-6 text-sm">Play a round of any game to see how you compare.</div>;
+  }
+  return (
+    <div className="mt-4 grid w-[min(720px,90vw)] gap-4">
+      {played.map((g) => {
+        const c = g.compare!;
+        const scale = Math.max(c.top_total, g.total_points, 1);
+        const pos = (v: number) => `${Math.min(100, (v / scale) * 100)}%`;
+        const isTop = g.rank === 1;
+        return (
+          <section key={g.game} style={card} className="p-4 text-left" aria-label={`${label(g.game)} comparison`}>
+            <div className="flex flex-wrap items-baseline justify-between gap-2">
+              <h3 className="text-lg font-black uppercase">{label(g.game)}</h3>
+              <p className="text-sm font-bold">#{g.rank} of {g.players} players</p>
+            </div>
+            <p className="mt-1 text-sm" style={{ color: INK_MUTED }}>
+              {isTop
+                ? "You're the top player in this game."
+                : c.next_username && c.points_to_next != null
+                  ? `${c.points_to_next} pts to catch @${c.next_username} · top player @${c.top_username} has ${c.top_total}`
+                  : `Top player @${c.top_username} has ${c.top_total}`}
+            </p>
+
+            {/* Strip: 0 -> top player's total, with the median player and you marked */}
+            <div className="relative mt-5 mb-7 h-2 rounded-full" style={{ background: GRID }} role="img"
+              aria-label={`Your ${g.total_points} points vs median ${Math.round(c.median_total)} and top ${c.top_total}`}>
+              <div className="absolute inset-y-0 left-0 rounded-full" style={{ width: pos(g.total_points), background: SERIES }} />
+              <Marker at={pos(c.median_total)} label={`median ${Math.round(c.median_total)}`} below />
+              <Marker at={pos(c.top_total)} label={`top ${c.top_total}`} below align="end" />
+              <span className="absolute -top-1.5 h-5 w-5 -translate-x-1/2 rounded-full border-2" style={{ left: pos(g.total_points), background: SERIES, borderColor: "#f7f5e9" }} />
+              <span className="absolute -top-6 -translate-x-1/2 whitespace-nowrap text-xs font-bold" style={{ left: pos(g.total_points) }}>you {g.total_points}</span>
+            </div>
+
+            <dl className="grid grid-cols-3 gap-2 text-sm">
+              <Stat label="Points per round" you={`+${c.my_avg_round}`} all={`+${c.all_avg_round}`} />
+              <Stat label="Round time" you={formatSeconds(c.my_avg_sec)} all={formatSeconds(c.all_avg_sec)} />
+              <Stat label="Rounds that scored" you={`${c.my_scoring_pct}%`} all={`${c.all_scoring_pct}%`} />
+            </dl>
+          </section>
+        );
+      })}
+    </div>
+  );
+}
+
+function Marker({ at, label: text, below, align }: { at: string; label: string; below?: boolean; align?: "end" }) {
+  return (
+    <>
+      <span className="absolute -top-1 h-4 w-0.5" style={{ left: at, background: INK_MUTED }} />
+      <span className={`absolute ${below ? "top-4" : "-top-6"} whitespace-nowrap text-xs ${align === "end" ? "-translate-x-full" : "-translate-x-1/2"}`} style={{ left: at, color: INK_MUTED }}>{text}</span>
+    </>
+  );
+}
+
+function Stat({ label: text, you, all }: { label: string; you: string; all: string }) {
+  return (
+    <div className="rounded-lg bg-white/70 p-2">
+      <dt className="text-xs" style={{ color: INK_MUTED }}>{text}</dt>
+      <dd><b>{you}</b> <span className="text-xs" style={{ color: INK_MUTED }}>you</span></dd>
+      <dd className="text-xs" style={{ color: INK_MUTED }}>{all} everyone</dd>
     </div>
   );
 }

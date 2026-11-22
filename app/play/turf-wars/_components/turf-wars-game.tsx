@@ -9,7 +9,11 @@ import { useEffect, useMemo, useState } from "react";
 import type { StopData, TransitLine } from "@/app/_data/transit/types";
 import { DIFFICULTIES } from "@/app/_data/game-catalog";
 import { useAppState } from "@/app/_state/app-state";
-import { usePlay, usePlayer } from "@/app/_stats/player";
+import { usePlay, usePlayer, usePlayerActions } from "@/app/_stats/player";
+
+// Stations answered wrong are locked: one try per station. The real rule would be "until tomorrow";
+// for the demo the lock lasts until the page is refreshed (this list lives only in this browser tab).
+const missedStations = new Set<string>();
 
 const BostonMap = dynamic(() => import("./boston-map"), {
   ssr: false,
@@ -25,6 +29,7 @@ export default function TurfWarsGame({ isActive }: { isActive: boolean }) {
   const difficulty = DIFFICULTIES[difficultyId];
   const player = usePlayer();
   const play = usePlay("turf-wars");
+  const actions = usePlayerActions();
   // Your campus comes from your school email. Everyone else plays for themselves (personal points only).
   const selectedSchool = player.school ?? "you";
   const [isDelayed, setIsDelayed] = useState(false);
@@ -70,6 +75,10 @@ export default function TurfWarsGame({ isActive }: { isActive: boolean }) {
   const lineConfig = activeStop ? LINE_DIFFICULTIES[activeStop.line] : null;
 
   const handleStartTrivia = (stop: StopData) => {
+    if (missedStations.has(stop.id)) {
+      actions?.notify(`You already missed ${stop.name}. It unlocks tomorrow (for the demo: refresh the page). Try another station!`);
+      return;
+    }
     const matching = TRIVIA_BANK.filter((item) => item.difficulty === LINE_DIFFICULTIES[stop.line].difficulty);
     setTrivia(pickRandom(matching.length ? matching : TRIVIA_BANK));
     setFeedback(null);
@@ -80,11 +89,16 @@ export default function TurfWarsGame({ isActive }: { isActive: boolean }) {
   const handleAnswer = (answer: string) => {
     if (!activeStop || !lineConfig) return;
     if (answer !== trivia.answer) {
-      setFeedback("Not quite. Try another answer to capture this station.");
+      // One try per station: a wrong answer scores 0 and locks this station.
+      missedStations.add(activeStop.id);
+      play.end(0, { station: activeStop.id, line: activeStop.line, delayed: isDelayed, correct: false });
+      setActivityFeed((previous) => [`Missed ${activeStop.name} · locked until tomorrow`, ...previous.slice(0, 4)]);
+      actions?.notify(`Not quite: the answer was "${trivia.answer}". ${activeStop.name} is locked until tomorrow (for the demo: refresh the page).`);
+      setActiveStop(null);
       return;
     }
     const earned = lineConfig.basePoints * (isDelayed ? 3 : 1);
-    play.end(earned, { station: activeStop.id, line: activeStop.line, delayed: isDelayed });
+    play.end(earned, { station: activeStop.id, line: activeStop.line, delayed: isDelayed, correct: true });
     if (!player.school) {
       // No school: the capture counts only toward your personal score, so standings and station owners don't change.
       setActivityFeed((previous) => [`You answered ${activeStop.name} (+${earned} personal pts${isDelayed ? " · delay bonus" : ""})`, ...previous.slice(0, 4)]);
