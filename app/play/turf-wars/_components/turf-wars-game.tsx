@@ -9,6 +9,7 @@ import { useEffect, useMemo, useState } from "react";
 import type { StopData, TransitLine } from "@/app/_data/transit/types";
 import { DIFFICULTIES } from "@/app/_data/game-catalog";
 import { useAppState } from "@/app/_state/app-state";
+import { usePlay, usePlayer } from "@/app/_stats/player";
 
 const BostonMap = dynamic(() => import("./boston-map"), {
   ssr: false,
@@ -22,7 +23,10 @@ function pickRandom<T>(items: T[]): T {
 export default function TurfWarsGame({ isActive }: { isActive: boolean }) {
   const { difficulty: difficultyId } = useAppState();
   const difficulty = DIFFICULTIES[difficultyId];
-  const [selectedSchool, setSelectedSchool] = useState("BU");
+  const player = usePlayer();
+  const play = usePlay("turf-wars");
+  // Your campus comes from your school email. Everyone else plays for themselves (personal points only).
+  const selectedSchool = player.school ?? "you";
   const [isDelayed, setIsDelayed] = useState(false);
   const [lineFilter, setLineFilter] = useState<"ALL" | TransitLine>("ALL");
   const [liveAlerts, setLiveAlerts] = useState<string[]>([]);
@@ -35,7 +39,17 @@ export default function TurfWarsGame({ isActive }: { isActive: boolean }) {
     "Northeastern captured Ruggles (+25 pts)",
     "MIT captured Kendall/MIT (+60 pts)",
   ]);
-  const [scores, setScores] = useState<Record<string, number>>({ BU: 140, Northeastern: 135, MIT: 120, Harvard: 110, BC: 105 });
+  const [scores, setScores] = useState<Record<string, number>>({ BU: 0, Northeastern: 0, MIT: 0, Harvard: 0, BC: 0 });
+
+  // Campus standings = real school totals from saved Turf Wars plays
+  useEffect(() => {
+    fetch("/api/leaderboard", { cache: "no-store" })
+      .then((res) => res.json())
+      .then((json: { schools?: { school: string; points: number }[] }) => {
+        if (json.schools) setScores(Object.fromEntries(json.schools.map((s) => [s.school, s.points])));
+      })
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -60,6 +74,7 @@ export default function TurfWarsGame({ isActive }: { isActive: boolean }) {
     setTrivia(pickRandom(matching.length ? matching : TRIVIA_BANK));
     setFeedback(null);
     setActiveStop(stop);
+    play.start();
   };
 
   const handleAnswer = (answer: string) => {
@@ -69,6 +84,13 @@ export default function TurfWarsGame({ isActive }: { isActive: boolean }) {
       return;
     }
     const earned = lineConfig.basePoints * (isDelayed ? 3 : 1);
+    play.end(earned, { station: activeStop.id, line: activeStop.line, delayed: isDelayed });
+    if (!player.school) {
+      // No school: the capture counts only toward your personal score, so standings and station owners don't change.
+      setActivityFeed((previous) => [`You answered ${activeStop.name} (+${earned} personal pts${isDelayed ? " · delay bonus" : ""})`, ...previous.slice(0, 4)]);
+      setActiveStop(null);
+      return;
+    }
     setScores((previous) => ({ ...previous, [selectedSchool]: (previous[selectedSchool] || 0) + earned }));
     setStops((previous) => previous.map((stop) => stop.id === activeStop.id
       ? { ...stop, owner: selectedSchool, points: stop.points + earned }
@@ -81,12 +103,14 @@ export default function TurfWarsGame({ isActive }: { isActive: boolean }) {
     <section className="turf-game" aria-label="Turf Wars trivia game" data-active={isActive}>
       <div className="game-hud">
         <div><p className="eyebrow">Live strategy · Campus Turf Capture</p><h2>Own the line.</h2></div>
-        <div className="campus-picker" aria-label="Choose your campus">
-          {Object.keys(SCHOOL_COLORS).map((school) => (
-            <button type="button" key={school} onClick={() => setSelectedSchool(school)} className={selectedSchool === school ? "active" : ""} aria-pressed={selectedSchool === school}>
-              <span style={{ backgroundColor: SCHOOL_COLORS[school] }} />{school === "Northeastern" ? "NEU" : school}
+        <div className="campus-picker" aria-label="Your campus">
+          {player.school ? (
+            <button type="button" className="active" disabled>
+              <span style={{ backgroundColor: SCHOOL_COLORS[player.school] }} />Playing for {player.school === "Northeastern" ? "NEU" : player.school}
             </button>
-          ))}
+          ) : (
+            <button type="button" disabled>{player.status === "ready" ? "Solo · personal points only" : "Guest · sign in with a school email to play for your campus"}</button>
+          )}
         </div>
       </div>
       <div className="alert-ticker"><span>LIVE MBTA</span><p>{liveAlerts.length ? liveAlerts.join("  •  ") : "Live service connected. No active rapid-transit alerts returned."}</p></div>

@@ -1,5 +1,6 @@
-import Link from "next/link";
+// The signed-in player's account: stats per game, totals, school standing and personal growth (see app/_stats/stats-views.tsx)
+import { ProfileView } from "../_stats/stats-views";
 
 export default function ProfilePage() {
-  return <main className="utility-page profile-page"><span className="large-avatar">KS</span><p className="eyebrow">Guest rider</p><h1>Profile service is not connected.</h1><p className="utility-intro">This repository does not contain an authentication or persistent profile backend. The route is preserved as a recoverable station instead of inventing account functionality.</p><Link className="primary-action" href="/?station=turf-wars">Return Home</Link></main>;
+  return <ProfileView />;
 }

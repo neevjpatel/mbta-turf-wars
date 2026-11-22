@@ -1,6 +1,5 @@
 "use client";
 
-import { CAMPUS_COLORS as SCHOOL_COLORS } from "@/app/_data/campuses";
 import { INITIAL_STOPS } from "@/app/_data/transit/stops";
 import { useState } from "react";
 import CharlieRunGame from "./charlie-run-game";
@@ -15,7 +14,7 @@ export default function CharlieRunExperience() {
   const line = DIFFICULTIES[difficulty].lineShort as TransitLine;
   const lineStops = INITIAL_STOPS.filter((stop) => stop.line === line);
   const [selectedStopId, setSelectedStopId] = useState(lineStops[0]?.id ?? INITIAL_STOPS[0].id);
-  const [selectedSchool, setSelectedSchool] = useState("BU");
+  const selectedSchool = "you"; // Charlie Run is personal: no campus, points go to the player only
   const [isDelayed, setIsDelayed] = useState(false);
   const [runNumber, setRunNumber] = useState(0);
   const [result, setResult] = useState<RunResult | null>(null);
@@ -39,11 +38,6 @@ export default function CharlieRunExperience() {
         <div className="runner-total"><small>RUN TOTAL</small><strong>{totalPoints} pts</strong></div>
       </div>
       <div className="runner-game-controls">
-        <label>Campus
-          <select value={selectedSchool} onChange={(event) => setSelectedSchool(event.target.value)}>
-            {Object.keys(SCHOOL_COLORS).map((school) => <option key={school} value={school}>{school}</option>)}
-          </select>
-        </label>
         <label>Station · {line} Line
           <select value={station.id} onChange={(event) => setSelectedStopId(event.target.value)}>
             {lineStops.map((stop) => <option key={stop.id} value={stop.id}>{stop.name}</option>)}

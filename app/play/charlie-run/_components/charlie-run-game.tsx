@@ -3,6 +3,7 @@
 import { LINE_DIFFICULTIES } from "@/app/_data/transit/lines";
 import { useEffect, useRef, useState } from "react";
 import type { DifficultyLevel, TransitLine } from "@/app/_data/transit/types";
+import { usePlay } from "@/app/_stats/player";
 
 interface Obstacle {
   id: number;
@@ -52,6 +53,9 @@ export default function CharlieRunGame({
   const [uiCoins, setUiCoins] = useState(0);
   const [status, setStatus] = useState<"playing" | "crashed">("playing");
   const [unlockedCapture, setUnlockedCapture] = useState(false);
+  const play = usePlay("charlie-run");
+  useEffect(() => { if (status === "playing") play.start(); }, [play, status]);
+  useEffect(() => { if (status === "crashed") play.end(uiScore, { coins: uiCoins, delayed: isDelayed, captured: unlockedCapture }); }, [play, status, uiScore, uiCoins, isDelayed, unlockedCapture]);
 
   const touchStartRef = useRef<{ x: number; y: number } | null>(null);
 
@@ -610,7 +614,7 @@ export default function CharlieRunGame({
 
       {unlockedCapture && status === "playing" && (
         <button
-          onClick={() => onCompleteRun(uiScore, true)}
+          onClick={() => { play.end(uiScore, { coins: uiCoins, delayed: isDelayed, captured: true }); onCompleteRun(uiScore, true); }}
           className="mt-2.5 w-full py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-xs uppercase tracking-wider shadow-lg cursor-pointer transition"
         >
           🏆 Target Hit! Capture {stationName} Now (+{uiScore} pts)

@@ -6,6 +6,7 @@ import dynamic from "next/dynamic";
 import { createPortal } from "react-dom";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { T_GUESSER_IMAGES_BY_DIFFICULTY, T_GUESSER_STATIONS, type TGuesserDifficulty, type TGuesserImage, type TGuesserStation } from "../_data/t-guesser-data";
+import { usePlay } from "@/app/_stats/player";
 
 const StationMap = dynamic(() => import("./station-map"), {
   ssr: false,
@@ -157,6 +158,8 @@ export default function TGuesserGame() {
 
 function TGuesserRound({ difficulty }: { difficulty: TGuesserDifficulty }) {
   const [round, setRound] = useState(0);
+  const play = usePlay("t-guesser");
+  useEffect(() => play.start(), [play, round]);
   const [selectedStation, setSelectedStation] = useState<TGuesserStation | null>(null);
   const [result, setResult] = useState<{ guessed: TGuesserStation; correct: TGuesserStation; distance: number; points: number } | null>(null);
   const [totalPoints, setTotalPoints] = useState(0);
@@ -211,6 +214,7 @@ function TGuesserRound({ difficulty }: { difficulty: TGuesserDifficulty }) {
     const points = selectedStation.id === correctStation.id ? 50 : 0;
     setResult({ guessed: selectedStation, correct: correctStation, distance, points });
     setTotalPoints((previous) => previous + points);
+    play.end(points, { correct: points > 0, distance_km: Math.round(distance * 100) / 100, image: image.id, guessed: selectedStation.id, answer: correctStation.id });
   };
 
   const nextRound = () => {

@@ -4,7 +4,10 @@ import Database from "better-sqlite3";
 import fs from "fs";
 import path from "path";
 
-export const GAMES = ["Game 1", "Game 2", "Game 3"]; // rename to your real game names
+import { GAMES, type GameName } from "./games";
+import { SCHOOL_GAMES, SCHOOLS, schoolForEmail, type School } from "./schools";
+
+export { GAMES };
 
 const DB_DIR = path.join(process.cwd(), "db");
 const DB_PATH = process.env.STATS_DB_PATH ?? path.join(DB_DIR, "t_games.db");
@@ -23,11 +26,7 @@ export function getDb() {
 
 // ---------- helpers ----------
 
-function userId(username: string): number {
-  const db = getDb();
-  db.prepare("INSERT OR IGNORE INTO users(username) VALUES (?)").run(username);
-  return (db.prepare("SELECT user_id FROM users WHERE username = ?").get(username) as { user_id: number }).user_id;
-}
+export type PlayerRow = { user_id: number; username: string; email: string | null; school: School | null };
 
 function gameId(game: string): number {
   const row = getDb().prepare("SELECT game_id FROM games WHERE name = ?").get(game) as { game_id: number } | undefined;
@@ -35,78 +34,182 @@ function gameId(game: string): number {
   return row.game_id;
 }
 
-// ---------- writing data (what the games call) ----------
+export function isGame(game: unknown): game is GameName {
+  return typeof game === "string" && (GAMES as readonly string[]).includes(game);
+}
+
+// ---------- players ----------
+
+export function findPlayerByAuthId(authUserId: string): PlayerRow | undefined {
+  return getDb()
+    .prepare("SELECT user_id, username, email, school FROM users WHERE auth_user_id = ?")
+    .get(authUserId) as PlayerRow | undefined;
+}
+
+export const USERNAME_RULE = /^[A-Za-z0-9_.-]{3,20}$/;
+
+/** First sign-in: create the stats player. School comes only from a verified school email. */
+export function createPlayer(authUserId: string, email: string, emailVerified: boolean, username: string) {
+  if (!USERNAME_RULE.test(username)) return { error: "Username must be 3–20 letters, numbers, _ . or -" } as const;
+  const school = emailVerified ? schoolForEmail(email) : null;
+  try {
+    getDb()
+      .prepare("INSERT INTO users(username, email, auth_user_id, school) VALUES (?, ?, ?, ?)")
+      .run(username, email.toLowerCase(), authUserId, school);
+  } catch (e) {
+    if (String(e).includes("users.username")) return { error: "That username is taken" } as const;
+    if (String(e).includes("UNIQUE")) return { error: "This account already has a username" } as const;
+    throw e;
+  }
+  return { player: findPlayerByAuthId(authUserId)! } as const;
+}
+
+// ---------- writing data (what the games call, through /api/start and /api/end) ----------
 
 /** Call when a game starts. Returns playId; the DB stamps started_at itself. */
-export function startGame(username: string, game: string): number {
+export function startGame(player: PlayerRow, game: GameName, difficulty: string | null): number {
+  // Only Turf Wars counts for a school, and only for players with a school email.
+  const school = (SCHOOL_GAMES as readonly string[]).includes(game) ? player.school : null;
   const res = getDb()
-    .prepare("INSERT INTO scores(user_id, game_id) VALUES (?, ?)")
-    .run(userId(username), gameId(game));
+    .prepare("INSERT INTO scores(user_id, game_id, difficulty, school) VALUES (?, ?, ?, ?)")
+    .run(player.user_id, gameId(game), difficulty, school);
   return Number(res.lastInsertRowid);
 }
 
-/** Call when a game ends. The DB stamps ended_at itself. */
-export function endGame(playId: number, score: number) {
-  getDb()
+/** Call when a game ends. Only the player who started the play can end it, and only once. */
+export function endGame(player: PlayerRow, playId: number, score: number, details: string | null) {
+  const res = getDb()
     .prepare(
-      `UPDATE scores SET score = ?, ended_at = strftime('%Y-%m-%d %H:%M:%f','now')
-       WHERE score_id = ? AND ended_at IS NULL`
+      `UPDATE scores SET score = ?, details = ?, ended_at = strftime('%Y-%m-%d %H:%M:%f','now')
+       WHERE score_id = ? AND user_id = ? AND ended_at IS NULL`
     )
-    .run(score, playId);
-  return playStats(playId);
+    .run(score, details, playId, player.user_id);
+  const owns = getDb().prepare("SELECT 1 FROM scores WHERE score_id = ? AND user_id = ?").get(playId, player.user_id);
+  if (!owns) return undefined;
+  return { ...playStats(playId), already_recorded: res.changes === 0 };
 }
 
 // ---------- stats ----------
 
-/** Everything to show on the "game over" screen for one play. */
+/** Everything to show right after one play ("game over" toast). */
 export function playStats(playId: number) {
   return getDb()
     .prepare(
       `WITH me AS (
-         SELECT p.*, b.best_score FROM finished_plays p
-         JOIN best_scores b ON b.user_id = p.user_id AND b.game_id = p.game_id
-         WHERE p.score_id = ?
+         SELECT user_id, game_id, score, duration_sec FROM finished_plays WHERE score_id = ?
+       ),
+       ranked AS (
+         SELECT user_id, total_points, best_score,
+                RANK() OVER (ORDER BY total_points DESC)          AS rank,
+                PERCENT_RANK() OVER (ORDER BY total_points) * 100 AS pct,
+                COUNT(*) OVER ()                                  AS players
+         FROM player_game_totals WHERE game_id = (SELECT game_id FROM me)
        )
-       SELECT me.score, me.best_score, me.duration_sec,
-         -- better than X% of players (best vs best, ties half)
-         ROUND(100.0 * (
-           (SELECT COUNT(*) FROM best_scores o WHERE o.game_id = me.game_id AND o.best_score < me.best_score)
-           + 0.5 * ((SELECT COUNT(*) FROM best_scores o WHERE o.game_id = me.game_id AND o.best_score = me.best_score) - 1)
-         ) / MAX((SELECT COUNT(*) FROM best_scores o WHERE o.game_id = me.game_id) - 1, 1), 1) AS better_than_pct,
-         -- this round was quicker than X% of rounds
-         ROUND(100.0 * (SELECT COUNT(*) FROM finished_plays o WHERE o.game_id = me.game_id AND o.duration_sec > me.duration_sec)
-           / MAX((SELECT COUNT(*) FROM finished_plays o WHERE o.game_id = me.game_id) - 1, 1), 1) AS quicker_than_pct,
-         (SELECT COUNT(*) FROM best_scores o WHERE o.game_id = me.game_id) AS players
-       FROM me`
+       SELECT me.score, me.duration_sec, r.total_points, r.best_score, r.rank, r.players,
+              -- this player has more points in this game than X% of the other players
+              ROUND(r.pct, 1) AS better_than_pct,
+              -- this round was quicker than X% of rounds
+              ROUND(100.0 * (SELECT COUNT(*) FROM finished_plays o WHERE o.game_id = me.game_id AND o.duration_sec > me.duration_sec)
+                / MAX((SELECT COUNT(*) FROM finished_plays o WHERE o.game_id = me.game_id) - 1, 1), 1) AS quicker_than_pct
+       FROM me JOIN ranked r ON r.user_id = me.user_id`
     )
-    .get(playId);
+    .get(playId) as
+    | { score: number; duration_sec: number; total_points: number; best_score: number; rank: number; players: number; better_than_pct: number; quicker_than_pct: number }
+    | undefined;
 }
 
+/** One game's top players by total points earned in that game. */
 export function gameLeaderboard(game: string, limit = 10) {
   return getDb()
     .prepare(
-      `SELECT u.username, b.best_score, RANK() OVER (ORDER BY b.best_score DESC) AS rank
-       FROM best_scores b JOIN users u USING(user_id)
-       WHERE b.game_id = ? ORDER BY rank LIMIT ?`
+      `SELECT u.username, u.school, t.total_points, t.best_score, t.plays,
+              RANK() OVER (ORDER BY t.total_points DESC) AS rank
+       FROM player_game_totals t JOIN users u USING(user_id)
+       WHERE t.game_id = ? ORDER BY rank, u.username LIMIT ?`
     )
     .all(gameId(game), limit);
 }
 
-/** Average percentile across games (raw scores have different scales). */
+/** Combined leaderboard: average percentile across games (raw scores have different scales). */
 export function overallLeaderboard(limit = 10, minGames = 2) {
   return getDb()
     .prepare(
       `WITH ranked AS (
-         SELECT user_id, game_id,
-                PERCENT_RANK() OVER (PARTITION BY game_id ORDER BY best_score) * 100 AS pct
-         FROM best_scores
+         SELECT user_id, game_id, total_points,
+                PERCENT_RANK() OVER (PARTITION BY game_id ORDER BY total_points) * 100 AS pct
+         FROM player_game_totals
        )
-       SELECT u.username, ROUND(AVG(pct), 1) AS t_score, COUNT(*) AS games_played
+       SELECT u.username, u.school, ROUND(AVG(pct), 1) AS t_score,
+              SUM(total_points) AS total_points, COUNT(*) AS games_played
        FROM ranked JOIN users u USING(user_id)
        GROUP BY u.user_id HAVING COUNT(*) >= ?
-       ORDER BY t_score DESC LIMIT ?`
+       ORDER BY t_score DESC, total_points DESC LIMIT ?`
     )
     .all(minGames, limit);
+}
+
+/** School leaderboard: Turf Wars points earned by each school's players. Every school is listed, even at 0. */
+export function schoolLeaderboard() {
+  const values = SCHOOLS.map(() => "(?)").join(", ");
+  return getDb()
+    .prepare(
+      `WITH s(school) AS (VALUES ${values})
+       SELECT s.school,
+              COALESCE(SUM(p.score), 0)   AS points,
+              COUNT(p.score_id)           AS captures,
+              COUNT(DISTINCT p.user_id)   AS players,
+              RANK() OVER (ORDER BY COALESCE(SUM(p.score), 0) DESC) AS rank
+       FROM s LEFT JOIN finished_plays p ON p.school = s.school
+       GROUP BY s.school
+       ORDER BY rank, s.school`
+    )
+    .all(...SCHOOLS) as { school: School; points: number; captures: number; players: number; rank: number }[];
+}
+
+/** A player's own statistics: one row per game, plus totals. */
+export function playerProfile(player: PlayerRow) {
+  const db = getDb();
+  const games = db
+    .prepare(
+      `WITH ranked AS (
+         SELECT user_id, game_id, plays, total_points, best_score,
+                RANK() OVER (PARTITION BY game_id ORDER BY total_points DESC)          AS rank,
+                PERCENT_RANK() OVER (PARTITION BY game_id ORDER BY total_points) * 100 AS pct,
+                COUNT(*) OVER (PARTITION BY game_id)                                  AS players
+         FROM player_game_totals
+       )
+       SELECT g.name AS game,
+              COALESCE(r.plays, 0)        AS plays,
+              COALESCE(r.total_points, 0) AS total_points,
+              r.best_score, r.rank, r.players,
+              ROUND(r.pct, 1)             AS better_than_pct,
+              (SELECT ROUND(AVG(f.duration_sec), 1) FROM finished_plays f
+                WHERE f.user_id = ? AND f.game_id = g.game_id) AS avg_round_sec
+       FROM games g LEFT JOIN ranked r ON r.game_id = g.game_id AND r.user_id = ?
+       ORDER BY g.game_id`
+    )
+    .all(player.user_id, player.user_id);
+  const totals = db
+    .prepare(
+      `SELECT COUNT(*) AS plays,
+              COALESCE(SUM(score), 0) AS total_points,
+              COALESCE(SUM(CASE WHEN school IS NOT NULL THEN score END), 0) AS school_points,
+              ROUND(COALESCE(SUM(duration_sec), 0) / 60, 1) AS minutes_played
+       FROM finished_plays WHERE user_id = ?`
+    )
+    .get(player.user_id);
+  // Personal growth: every finished round in order, with a running total of points
+  const history = db
+    .prepare(
+      `SELECT p.ended_at, g.name AS game, p.score,
+              SUM(p.score) OVER (ORDER BY p.ended_at, p.score_id ROWS UNBOUNDED PRECEDING) AS cumulative
+       FROM finished_plays p JOIN games g USING(game_id)
+       WHERE p.user_id = ?
+       ORDER BY p.ended_at, p.score_id`
+    )
+    .all(player.user_id) as { ended_at: string; game: string; score: number; cumulative: number }[];
+  const school = player.school ? schoolLeaderboard().find((s) => s.school === player.school) ?? null : null;
+  return { username: player.username, school: player.school, totals, games, schoolStanding: school, history: history.slice(-500) };
 }
 
 export function gameTimeSummary() {
