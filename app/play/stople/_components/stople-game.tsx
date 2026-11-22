@@ -1,9 +1,7 @@
 "use client";
 
 import { TRANSIT_STATIONS } from "@/app/_data/transit/stations";
-import { LINE_DIFFICULTIES } from "@/app/_data/transit/lines";
-import type { TransitStation, TransitLine } from "@/app/_data/transit/types";
-import { DIFFICULTIES } from "@/app/_data/game-catalog";
+import type { TransitStation } from "@/app/_data/transit/types";
 import { getStationHint } from "@/app/_lib/station-hints";
 import { useAppState } from "@/app/_state/app-state";
 import { useMemo, useState } from "react";
@@ -36,8 +34,7 @@ function editDistance(first: string, second: string) {
 
 export default function StopleGame() {
   const { difficulty } = useAppState();
-  const line = DIFFICULTIES[difficulty].lineShort as TransitLine;
-  const maxGuesses = LINE_DIFFICULTIES[line].maxStopleGuesses;
+  const maxGuesses = { easy: 6, medium: 4, hard: 2, extreme: 1 }[difficulty];
   const [target, setTarget] = useState<TransitStation>(() => randomStation());
   const [guessId, setGuessId] = useState<string | null>(null);
   const [guesses, setGuesses] = useState<GuessEntry[]>([]);
@@ -94,9 +91,9 @@ export default function StopleGame() {
           <circle cx="100" cy="200" r="12" stroke="#00843D" />
           <circle cx="350" cy="450" r="12" stroke="#00843D" />
           <circle cx="600" cy="700" r="12" stroke="#00843D" />
-          <circle cx="100" cy="386" r="12" stroke="#ED8B00" />
-          <circle cx="400" cy="296" r="12" stroke="#ED8B00" />
-          <circle cx="700" cy="206" r="12" stroke="#ED8B00" />
+          <circle cx="100" cy="380" r="12" stroke="#ED8B00" />
+          <circle cx="400" cy="290" r="12" stroke="#ED8B00" />
+          <circle cx="700" cy="200" r="12" stroke="#ED8B00" />
           <circle cx="150" cy="570" r="12" stroke="#003DA5" />
           <circle cx="500" cy="570" r="12" stroke="#003DA5" />
           <circle cx="850" cy="570" r="12" stroke="#003DA5" />
