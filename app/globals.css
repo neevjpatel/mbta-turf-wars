@@ -1057,20 +1057,8 @@ body { display: grid; grid-template-rows: 64px minmax(0, 1fr); }
 .stople-answer strong { color: #172930; }
 .stople-answer.won { background: #e0f0df; }.stople-answer.lost { background: #f4e1da; }
 
-.charlie-run-experience { height: 100%; display: grid; grid-template-rows: auto auto minmax(0, 1fr) auto; gap: 11px; overflow: auto; padding: 16px clamp(14px, 3vw, 34px); background: radial-gradient(circle at 50% 0, #234858, #0b171d 66%); color: #f1f4ec; }
-.runner-game-header { display: flex; align-items: end; justify-content: space-between; gap: 14px; }
-.runner-game-header .eyebrow { margin: 0 0 4px; color: #81c5da; font-size: 9px; font-weight: 950; letter-spacing: .12em; text-transform: uppercase; }
-.runner-game-header h1 { margin: 0; font-size: clamp(23px, 3vw, 38px); line-height: .95; text-transform: uppercase; }
-.runner-total { display: grid; gap: 2px; text-align: right; }.runner-total small { color: #9eb0b4; font-size: 8px; font-weight: 900; letter-spacing: .1em; }.runner-total strong { color: #f4c64f; font: 900 14px "Courier New", monospace; }
-.runner-game-controls { display: flex; align-items: end; flex-wrap: wrap; gap: 9px; }
-.runner-game-controls label { display: grid; gap: 4px; color: #a8bbbf; font-size: 8px; font-weight: 900; letter-spacing: .08em; text-transform: uppercase; }
-.runner-game-controls select { min-width: 130px; border: 1px solid #ffffff35; padding: 7px 9px; background: #091418; color: #fff; font-size: 11px; }
-.runner-delay-toggle { border: 1px solid #a77725; padding: 7px 10px; background: #30220e; color: #f0c24d; font-size: 9px; font-weight: 900; text-transform: uppercase; }.runner-delay-toggle.active { background: #a94b13; color: #fff; }
-.runner-play-area { min-height: 0; display: grid; align-content: center; justify-items: center; }
-.runner-play-area > * { width: min(700px, 100%); }
-.runner-result { display: grid; justify-items: center; gap: 9px; padding: 24px; border: 2px solid #4c666d; background: #091418; text-align: center; }
-.runner-result-icon { font-size: 38px; }.runner-result p { margin: 0; color: #b6c7c9; font-size: 13px; font-weight: 800; }.runner-result strong { color: #f4c64f; font: 950 22px "Courier New", monospace; }.runner-result button { border: 2px solid #0b201b; padding: 9px 18px; background: #52d38a; color: #0b1914; font-size: 10px; font-weight: 950; text-transform: uppercase; }
-.runner-instructions { margin: 0; color: #85999e; font-size: 9px; text-align: center; }
+.charlie-run-scene { position: relative; width: 100%; height: 100%; min-height: 0; overflow: hidden; background: #132d3b; }
+.charlie-run-scene canvas { display: block; width: 100%; height: 100%; }
 
 .history-page { height: 100%; overflow-y: auto; background: #eff0e7; color: #172930; scroll-padding-top: 20px; }
 .history-hero { min-height: 360px; display: flex; align-items: center; gap: clamp(28px, 6vw, 100px); padding: 70px clamp(40px, 9vw, 170px); background: radial-gradient(circle at 75% 20%, #ffe5a8 0 8%, transparent 26%), linear-gradient(145deg, #69b8dd 0 45%, #a9d5bd 46% 63%, #9e5a43 64%); border-bottom: 8px solid #172930; }
