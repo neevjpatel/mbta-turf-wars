@@ -515,7 +515,7 @@ function TGuesserRound({ difficulty }: { difficulty: TGuesserDifficulty }) {
           )}
         </div>
       </section>
-      <p className="pointer-events-none absolute bottom-1 left-4 z-[12] text-[10px] text-white/75 drop-shadow">Drag photo to pan</p>
+      <p className="pointer-events-none absolute bottom-1 left-4 z-[12] max-w-[70%] text-[10px] text-white/75 drop-shadow">Drag to pan · Scroll or pinch to zoom · Reset in photo controls</p>
       <p className="pointer-events-none absolute bottom-1 right-4 z-[12] text-[10px] text-white/60 drop-shadow sm:bottom-1 sm:right-6">Map data © OpenStreetMap contributors</p>
     </main>
   );

@@ -19,3 +19,11 @@ export interface LineDifficultyConfig {
   color: string;
   maxStopleGuesses: number;
 }
+
+export interface TransitStation {
+  id: string;
+  name: string;
+  lat: number;
+  lng: number;
+  lines: TransitLine[];
+}
