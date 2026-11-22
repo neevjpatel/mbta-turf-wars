@@ -1,12 +1,13 @@
 {
-  "name": "mbta-turf-wars",
+  "name": "mbta-mini-games",
   "version": "0.1.0",
   "private": true,
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "test": "node --test tests/*.test.mjs"
   },
   "dependencies": {
     "@types/better-sqlite3": "^9.6.0",
