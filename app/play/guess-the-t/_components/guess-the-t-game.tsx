@@ -162,7 +162,9 @@ function GuessTheTRound({ difficulty }: { difficulty: GuessTheTDifficulty }) {
   const [totalPoints, setTotalPoints] = useState(0);
   const [mapExpanded, setMapExpanded] = useState(false);
   const [loadedImageId, setLoadedImageId] = useState<string | null>(null);
-
+  const [photoDimensions, setPhotoDimensions] = useState<{ id: string; width: number; height: number } | null>(null);
+  const [photoPosition, setPhotoPosition] = useState<{ imageId: string; x: number; y: number }>({ imageId: "", x: 50, y: 50 });
+  const photoDrag = useRef<{ imageId: string; pointerId: number; startX: number; startY: number; positionX: number; positionY: number } | null>(null);
   const eligibleImages = useMemo(() => {
     const difficultyImages = GUESS_THE_T_IMAGES_BY_DIFFICULTY[difficulty];
     return difficultyImages.length > 0 ? difficultyImages : GUESS_THE_T_IMAGES_BY_DIFFICULTY.easy;
@@ -170,6 +172,38 @@ function GuessTheTRound({ difficulty }: { difficulty: GuessTheTDifficulty }) {
   const [imageOrder, setImageOrder] = useState<GuessTheTImage[]>(() => shuffleImages(eligibleImages));
   const image: GuessTheTImage = imageOrder[round % imageOrder.length];
   const correctStation = GUESS_THE_T_STATIONS.find((station) => station.id === image.correctStationId)!;
+  const activePhotoPosition = photoPosition.imageId === image.id ? photoPosition : { imageId: image.id, x: 50, y: 50 };
+
+  const startPhotoPan = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (event.button !== 0 || !photoDimensions || photoDimensions.id !== image.id) return;
+    photoDrag.current = {
+      imageId: image.id,
+      pointerId: event.pointerId,
+      startX: event.clientX,
+      startY: event.clientY,
+      positionX: activePhotoPosition.x,
+      positionY: activePhotoPosition.y,
+    };
+    event.currentTarget.setPointerCapture(event.pointerId);
+  };
+
+  const panPhoto = (event: React.PointerEvent<HTMLDivElement>) => {
+    const drag = photoDrag.current;
+    const dimensions = photoDimensions;
+    if (!drag || drag.pointerId !== event.pointerId || drag.imageId !== image.id || !dimensions || dimensions.id !== image.id) return;
+
+    const bounds = event.currentTarget.getBoundingClientRect();
+    const coverScale = Math.max(bounds.width / dimensions.width, bounds.height / dimensions.height);
+    const overflowX = Math.max(0, dimensions.width * coverScale - bounds.width);
+    const overflowY = Math.max(0, dimensions.height * coverScale - bounds.height);
+    const x = overflowX === 0 ? 50 : Math.min(100, Math.max(0, drag.positionX - (event.clientX - drag.startX) / overflowX * 100));
+    const y = overflowY === 0 ? 50 : Math.min(100, Math.max(0, drag.positionY - (event.clientY - drag.startY) / overflowY * 100));
+    setPhotoPosition({ imageId: image.id, x, y });
+  };
+
+  const stopPhotoPan = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (photoDrag.current?.pointerId === event.pointerId) photoDrag.current = null;
+  };
 
   const submitGuess = () => {
     if (!selectedStation || result) return;
@@ -192,16 +226,31 @@ function GuessTheTRound({ difficulty }: { difficulty: GuessTheTDifficulty }) {
 
   return (
     <main className="relative h-full w-full overflow-hidden bg-[#07111c] text-white">
-      <Image
-        src={image.src}
-        alt={`${formatLocationName(image.locationId)} location challenge`}
-        fill
-        priority
-        sizes="100vw"
-        onLoad={() => setLoadedImageId(image.id)}
-        className={`object-cover transition-[filter,transform] duration-700 ease-out ${loadedImageId === image.id ? "scale-100 blur-0" : "scale-[1.03] blur-xl"}`}
-      />
-      <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-black/65 via-black/5 to-black/70" />
+      <div
+        className="absolute inset-0 z-10 touch-none select-none cursor-grab active:cursor-grabbing"
+        aria-label="Drag the photo to pan across it"
+        onPointerDown={startPhotoPan}
+        onPointerMove={panPhoto}
+        onPointerUp={stopPhotoPan}
+        onPointerCancel={stopPhotoPan}
+        onLostPointerCapture={stopPhotoPan}
+      >
+        <Image
+          src={image.src}
+          alt={`${formatLocationName(image.locationId)} location challenge`}
+          fill
+          priority
+          draggable={false}
+          sizes="100vw"
+          onLoad={(event) => {
+            setLoadedImageId(image.id);
+            setPhotoDimensions({ id: image.id, width: event.currentTarget.naturalWidth, height: event.currentTarget.naturalHeight });
+          }}
+          style={{ objectPosition: `${activePhotoPosition.x}% ${activePhotoPosition.y}%` }}
+          className={`object-cover transition-[filter,transform] duration-700 ease-out ${loadedImageId === image.id ? "scale-100 blur-0" : "scale-[1.03] blur-xl"}`}
+        />
+      </div>
+      <div className="pointer-events-none absolute inset-0 z-[11] bg-gradient-to-b from-black/65 via-black/5 to-black/70" />
       {result?.points === 50 && <ConfettiBurst key={`confetti-${round}`} />}
 
       <header className="absolute inset-x-0 top-0 z-20 flex items-start justify-end gap-3 p-4 sm:p-6">
@@ -254,7 +303,8 @@ function GuessTheTRound({ difficulty }: { difficulty: GuessTheTDifficulty }) {
           )}
         </div>
       </section>
-      <p className="absolute bottom-1 right-4 z-10 text-[10px] text-white/60 drop-shadow sm:bottom-1 sm:right-6">Map data © OpenStreetMap contributors</p>
+      <p className="pointer-events-none absolute bottom-1 left-4 z-[12] text-[10px] text-white/75 drop-shadow">Drag photo to pan</p>
+      <p className="pointer-events-none absolute bottom-1 right-4 z-[12] text-[10px] text-white/60 drop-shadow sm:bottom-1 sm:right-6">Map data © OpenStreetMap contributors</p>
     </main>
   );
 }
