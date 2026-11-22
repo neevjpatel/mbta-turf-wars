@@ -7,9 +7,11 @@ import { createCharlieRunTrain, type CharlieRunLine } from "./charlie-run-train-
 type RunResult = { score: number; distance: number; coins: number };
 
 export default function CharlieRunScene({
+  speed,
   onScoreChange,
   onGameOver,
 }: {
+  speed: number;
   onScoreChange: (score: number, distance: number, coins: number) => void;
   onGameOver: (result: RunResult) => void;
 }) {
@@ -655,7 +657,7 @@ export default function CharlieRunScene({
     let runDistance = 0;
     let coinCount = 0;
     let score = 0;
-    const worldSpeed = 17;
+    let worldSpeed = speed;
     let nextObstacleDistance = Number.POSITIVE_INFINITY;
     const spawnObstacleInterval = () => {
       const laneOrder = trackCenters.map((_, laneIndex) => laneIndex);
@@ -766,10 +768,12 @@ export default function CharlieRunScene({
     const animate = (time: number) => {
       const delta = previousFrameTime === 0 ? 0 : Math.min((time - previousFrameTime) / 1000, 0.05);
       previousFrameTime = time;
+      worldSpeed = speed + score / 2000;
       const introElapsed = Math.max(0, time - introStartedAt);
       const sidewaysWalk = !introComplete && introElapsed < 1500;
       const lookingForTrains = !introComplete && introElapsed >= 1500 && introElapsed < 1900;
-      const gaitPhase = time * (sidewaysWalk ? 0.0055 : 0.01);
+      const gaitRate = sidewaysWalk ? 0.0055 : 0.01 * (introComplete ? worldSpeed / 17 : 1);
+      const gaitPhase = time * gaitRate;
       const gaitStrength = sidewaysWalk ? 0.34 : lookingForTrains ? 0.06 : 1;
       const stride = gaitPhase;
       const leftDrive = Math.sin(stride);
@@ -873,7 +877,7 @@ export default function CharlieRunScene({
 
       if (introComplete && !gameOver) {
         for (const segment of scenerySegments) {
-          segment.position.z += 17 * delta;
+          segment.position.z += worldSpeed * delta;
           if (segment.position.z > 78) segment.position.z -= scenerySegmentLength * scenerySegmentCount;
         }
       }
@@ -903,9 +907,11 @@ export default function CharlieRunScene({
             if (trail.collected[coinIndex]) continue;
             coin.rotation.y += delta * 2.8;
             const coinZ = trail.group.position.z + coin.position.z;
+            const previousCoinZ = coinZ - worldSpeed * delta;
             const coinY = trail.group.position.y + coin.position.y;
             if (Math.abs(trail.group.position.x - runner.position.x) <= 1.7
-              && Math.abs(coinZ - runner.position.z) <= 1.8
+              && Math.max(previousCoinZ, coinZ) >= runner.position.z - 1.8
+              && Math.min(previousCoinZ, coinZ) <= runner.position.z + 1.8
               && coinY >= runner.position.y + 0.35
               && coinY <= runner.position.y + 2.25) {
               trail.collected[coinIndex] = true;
@@ -934,6 +940,7 @@ export default function CharlieRunScene({
       if (!gameOver) {
         for (let index = movingTrains.length - 1; index >= 0; index -= 1) {
           const train = movingTrains[index];
+          if (train.direction === 1) train.speed = worldSpeed;
           train.group.position.z += train.speed * delta;
           if ((train.direction === 1 && train.group.position.z > 25) || (train.direction === -1 && train.group.position.z < -205)) {
             scene.remove(train.group);
@@ -1003,7 +1010,7 @@ export default function CharlieRunScene({
       sceneryInstances.forEach((instance) => instance.dispose());
       scene.clear();
     };
-  }, []);
+  }, [speed]);
 
   return <section ref={mountRef} className="charlie-run-scene" role="application" aria-label="Charlie Run. Press A or D to move one track left or right." />;
 }
