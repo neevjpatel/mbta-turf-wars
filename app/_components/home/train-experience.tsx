@@ -24,7 +24,11 @@ import {
 function requestedStation(): GameId | null {
   if (typeof window === "undefined") return null;
   const value = new URLSearchParams(window.location.search).get("station");
-  return isGameId(value) ? value : null;
+  const legacyGameIds: Record<string, GameId> = {
+    "guess-the-t": "t-guesser",
+    stationle: "stople",
+  };
+  return value && legacyGameIds[value] ? legacyGameIds[value] : isGameId(value) ? value : null;
 }
 
 function GameStopPanel({ game, onPlay, disabled }: { game: (typeof GAMES)[number]; onPlay: () => void; disabled: boolean }) {

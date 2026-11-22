@@ -16,7 +16,7 @@ function randomStation(excludedId?: string) {
   return pool[Math.floor(Math.random() * pool.length)];
 }
 
-export default function StationleGame() {
+export default function StopleGame() {
   const { difficulty } = useAppState();
   const line = DIFFICULTIES[difficulty].lineShort as TransitLine;
   const lineConfig = LINE_DIFFICULTIES[line];
@@ -38,7 +38,7 @@ export default function StationleGame() {
     const hint = getStationHint(guess, target);
     const updated = [...guesses, { stop: guess, distance: hint.distance, direction: hint.direction, sameLine: hint.sameLine }];
     setGuesses(updated);
-    if (updated.length >= lineConfig.maxStationleGuesses) setResult({ won: false, answer: target.name });
+    if (updated.length >= lineConfig.maxStopleGuesses) setResult({ won: false, answer: target.name });
   };
 
   const startNextRound = () => {
@@ -50,30 +50,30 @@ export default function StationleGame() {
   };
 
   return (
-    <section className="stationle-game" aria-label="Stationle station guessing game">
-      <div className="stationle-topline"><span className="stationle-mark">T</span><span>STATIONLE · MBTA STATION PUZZLE</span><strong>{points} PTS</strong></div>
-      <div className="stationle-content">
+    <section className="stople-game" aria-label="Stople station guessing game">
+      <div className="stople-topline"><span className="stople-mark">T</span><span>STOPLE · MBTA STATION PUZZLE</span><strong>{points} PTS</strong></div>
+      <div className="stople-content">
         <p className="eyebrow">Distance and direction clues</p>
         <h1>Guess the mystery station.</h1>
-        <p className="stationle-intro">Choose an MBTA stop. Each guess tells you how far away the answer is and which direction to travel.</p>
-        <div className="stationle-line-info"><span style={{ backgroundColor: lineConfig.color }}>{line[0]}</span><div><strong>{line} Line challenge</strong><small>{lineConfig.maxStationleGuesses} guesses · {lineConfig.difficulty}</small></div></div>
+        <p className="stople-intro">Choose an MBTA stop. Each guess tells you how far away the answer is and which direction to travel.</p>
+        <div className="stople-line-info"><span style={{ backgroundColor: lineConfig.color }}>{line[0]}</span><div><strong>{line} Line challenge</strong><small>{lineConfig.maxStopleGuesses} guesses · {lineConfig.difficulty}</small></div></div>
 
         {!result ? (
-          <div className="stationle-entry">
-            <label htmlFor="stationle-guess">Your station guess</label>
-            <div><select id="stationle-guess" value={guessId} onChange={(event) => setGuessId(event.target.value)}>{INITIAL_STOPS.map((stop) => <option key={stop.id} value={stop.id} disabled={guesses.some((entry) => entry.stop.id === stop.id)}>{stop.name} · {stop.line} Line</option>)}</select><button type="button" onClick={submitGuess}>Guess</button></div>
+          <div className="stople-entry">
+            <label htmlFor="stople-guess">Your station guess</label>
+            <div><select id="stople-guess" value={guessId} onChange={(event) => setGuessId(event.target.value)}>{INITIAL_STOPS.map((stop) => <option key={stop.id} value={stop.id} disabled={guesses.some((entry) => entry.stop.id === stop.id)}>{stop.name} · {stop.line} Line</option>)}</select><button type="button" onClick={submitGuess}>Guess</button></div>
           </div>
         ) : (
-          <div className={`stationle-result ${result.won ? "won" : "lost"}`} role="status">
+          <div className={`stople-result ${result.won ? "won" : "lost"}`} role="status">
             <p>{result.won ? `Correct! +${lineConfig.basePoints} points` : "Out of guesses"}</p>
             <strong>{result.answer}</strong>
             <button type="button" onClick={startNextRound}>Next station</button>
           </div>
         )}
 
-        <div className="stationle-guesses" aria-live="polite">
-          <div className="stationle-guess-heading"><span>Guesses</span><span>{guesses.length} / {lineConfig.maxStationleGuesses}</span></div>
-          {guesses.length === 0 ? <p className="stationle-empty">Your clues will appear here.</p> : guesses.map((entry, index) => <div className="stationle-guess-row" key={`${entry.stop.id}-${index}`}><strong>{entry.stop.name}</strong><span>{entry.distance} mi</span><b>{entry.direction}</b><small>{entry.sameLine ? "Same line" : "Different line"}</small></div>)}
+        <div className="stople-guesses" aria-live="polite">
+          <div className="stople-guess-heading"><span>Guesses</span><span>{guesses.length} / {lineConfig.maxStopleGuesses}</span></div>
+          {guesses.length === 0 ? <p className="stople-empty">Your clues will appear here.</p> : guesses.map((entry, index) => <div className="stople-guess-row" key={`${entry.stop.id}-${index}`}><strong>{entry.stop.name}</strong><span>{entry.distance} mi</span><b>{entry.direction}</b><small>{entry.sameLine ? "Same line" : "Different line"}</small></div>)}
         </div>
       </div>
     </section>

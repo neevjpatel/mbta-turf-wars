@@ -1,9 +1,9 @@
-export const GAME_ORDER = Object.freeze(["turf-wars", "guess-the-t", "stationle", "charlie-run"]);
+export const GAME_ORDER = Object.freeze(["turf-wars", "t-guesser", "stople", "charlie-run"]);
 
 export const GAME_LABELS = Object.freeze({
   "turf-wars": "Turf Wars",
-  "guess-the-t": "Guess the T",
-  stationle: "Stationle",
+  "t-guesser": "T Guesser",
+  stople: "Stople",
   "charlie-run": "Charlie Run",
 });
 

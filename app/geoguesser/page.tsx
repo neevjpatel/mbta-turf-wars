@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
 
-export default function LegacyGuessTheTRoute() {
-  redirect("/play/guess-the-t");
+export default function LegacyTGuesserRoute() {
+  redirect("/play/t-guesser");
 }

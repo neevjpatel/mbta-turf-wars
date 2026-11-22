@@ -5,21 +5,21 @@ import { useAppState } from "@/app/_state/app-state";
 import dynamic from "next/dynamic";
 import { createPortal } from "react-dom";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { GUESS_THE_T_IMAGES_BY_DIFFICULTY, GUESS_THE_T_STATIONS, type GuessTheTDifficulty, type GuessTheTImage, type GuessTheTStation } from "../_data/guess-the-t-data";
+import { T_GUESSER_IMAGES_BY_DIFFICULTY, T_GUESSER_STATIONS, type TGuesserDifficulty, type TGuesserImage, type TGuesserStation } from "../_data/t-guesser-data";
 
 const StationMap = dynamic(() => import("./station-map"), {
   ssr: false,
   loading: () => <div className="grid h-full place-items-center bg-slate-900 text-sm text-slate-200">Loading map…</div>,
 });
 
-const difficultyInfo: Record<GuessTheTDifficulty, { label: string; color: string }> = {
+const difficultyInfo: Record<TGuesserDifficulty, { label: string; color: string }> = {
   easy: { label: "Easy", color: "#34d399" },
   medium: { label: "Medium", color: "#fb923c" },
   hard: { label: "Hard", color: "#60a5fa" },
   extreme: { label: "Extreme", color: "#f87171" },
 };
 
-function distanceKm(first: GuessTheTStation, second: GuessTheTStation) {
+function distanceKm(first: TGuesserStation, second: TGuesserStation) {
   const radians = (degrees: number) => (degrees * Math.PI) / 180;
   const lat1 = radians(first.lat);
   const lat2 = radians(second.lat);
@@ -150,15 +150,15 @@ function ConfettiBurst() {
   );
 }
 
-export default function GuessTheTGame() {
+export default function TGuesserGame() {
   const { difficulty } = useAppState();
-  return <GuessTheTRound key={difficulty} difficulty={difficulty} />;
+  return <TGuesserRound key={difficulty} difficulty={difficulty} />;
 }
 
-function GuessTheTRound({ difficulty }: { difficulty: GuessTheTDifficulty }) {
+function TGuesserRound({ difficulty }: { difficulty: TGuesserDifficulty }) {
   const [round, setRound] = useState(0);
-  const [selectedStation, setSelectedStation] = useState<GuessTheTStation | null>(null);
-  const [result, setResult] = useState<{ guessed: GuessTheTStation; correct: GuessTheTStation; distance: number; points: number } | null>(null);
+  const [selectedStation, setSelectedStation] = useState<TGuesserStation | null>(null);
+  const [result, setResult] = useState<{ guessed: TGuesserStation; correct: TGuesserStation; distance: number; points: number } | null>(null);
   const [totalPoints, setTotalPoints] = useState(0);
   const [mapExpanded, setMapExpanded] = useState(false);
   const [loadedImageId, setLoadedImageId] = useState<string | null>(null);
@@ -166,12 +166,12 @@ function GuessTheTRound({ difficulty }: { difficulty: GuessTheTDifficulty }) {
   const [photoPosition, setPhotoPosition] = useState<{ imageId: string; x: number; y: number }>({ imageId: "", x: 50, y: 50 });
   const photoDrag = useRef<{ imageId: string; pointerId: number; startX: number; startY: number; positionX: number; positionY: number } | null>(null);
   const eligibleImages = useMemo(() => {
-    const difficultyImages = GUESS_THE_T_IMAGES_BY_DIFFICULTY[difficulty];
-    return difficultyImages.length > 0 ? difficultyImages : GUESS_THE_T_IMAGES_BY_DIFFICULTY.easy;
+    const difficultyImages = T_GUESSER_IMAGES_BY_DIFFICULTY[difficulty];
+    return difficultyImages.length > 0 ? difficultyImages : T_GUESSER_IMAGES_BY_DIFFICULTY.easy;
   }, [difficulty]);
-  const [imageOrder, setImageOrder] = useState<GuessTheTImage[]>(() => shuffleImages(eligibleImages));
-  const image: GuessTheTImage = imageOrder[round % imageOrder.length];
-  const correctStation = GUESS_THE_T_STATIONS.find((station) => station.id === image.correctStationId)!;
+  const [imageOrder, setImageOrder] = useState<TGuesserImage[]>(() => shuffleImages(eligibleImages));
+  const image: TGuesserImage = imageOrder[round % imageOrder.length];
+  const correctStation = T_GUESSER_STATIONS.find((station) => station.id === image.correctStationId)!;
   const activePhotoPosition = photoPosition.imageId === image.id ? photoPosition : { imageId: image.id, x: 50, y: 50 };
 
   const startPhotoPan = (event: React.PointerEvent<HTMLDivElement>) => {
@@ -277,7 +277,7 @@ function GuessTheTRound({ difficulty }: { difficulty: GuessTheTDifficulty }) {
           >{mapExpanded ? "Collapse map" : "Expand map"}</button>
         <div className="absolute inset-0 pb-[76px]">
           <StationMap
-            stations={GUESS_THE_T_STATIONS}
+            stations={T_GUESSER_STATIONS}
             selectedId={selectedStation?.id ?? null}
             correctStationId={result?.correct.id ?? null}
             incorrectGuessId={result && result.points === 0 ? result.guessed.id : null}

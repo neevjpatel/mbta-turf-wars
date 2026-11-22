@@ -46,7 +46,7 @@ test("forward and backward directions are deterministic", () => {
 test("rapid navigation is rejected while a destination is pending", () => {
   assert.equal(canStartJourney({ phase: "idle_open", currentDestination: "home", targetDestination: "turf-wars" }), true);
   assert.equal(canStartJourney({ phase: "doors_closing", currentDestination: "home", targetDestination: "turf-wars" }), false);
-  assert.equal(canStartJourney({ phase: "idle_open", currentDestination: "home", targetDestination: "turf-wars", pendingDestination: "guess-the-t" }), false);
+  assert.equal(canStartJourney({ phase: "idle_open", currentDestination: "home", targetDestination: "turf-wars", pendingDestination: "t-guesser" }), false);
 });
 
 test("reduced-motion journeys keep state order without waiting", () => {
@@ -110,32 +110,32 @@ test("journeys do not mutate caller-owned difficulty state", async () => {
 
 test("homepage game registry includes the four connected games in order", () => {
   assert.equal(GAME_ORDER[0], "turf-wars");
-  assert.deepEqual(GAME_ORDER, ["turf-wars", "guess-the-t", "stationle", "charlie-run"]);
+  assert.deepEqual(GAME_ORDER, ["turf-wars", "t-guesser", "stople", "charlie-run"]);
 });
 
 test("game stops use the finalized frontend labels", () => {
   assert.deepEqual(GAME_LABELS, {
     "turf-wars": "Turf Wars",
-    "guess-the-t": "Guess the T",
-    stationle: "Stationle",
+    "t-guesser": "T Guesser",
+    stople: "Stople",
     "charlie-run": "Charlie Run",
   });
 });
 
 test("side navigation advances one stop and stops at route boundaries", () => {
-  assert.equal(adjacentGameId("turf-wars", 1), "guess-the-t");
-  assert.equal(adjacentGameId("guess-the-t", 1), "stationle");
-  assert.equal(adjacentGameId("stationle", 1), "charlie-run");
+  assert.equal(adjacentGameId("turf-wars", 1), "t-guesser");
+  assert.equal(adjacentGameId("t-guesser", 1), "stople");
+  assert.equal(adjacentGameId("stople", 1), "charlie-run");
   assert.equal(adjacentGameId("charlie-run", 1), null);
   assert.equal(adjacentGameId("turf-wars", -1), null);
-  assert.equal(adjacentGameId("stationle", -1), "guess-the-t");
-  assert.equal(adjacentGameId("charlie-run", -1), "stationle");
+  assert.equal(adjacentGameId("stople", -1), "t-guesser");
+  assert.equal(adjacentGameId("charlie-run", -1), "stople");
 });
 
 test("each menu game has its own gameplay route", () => {
   assert.equal(gameRoute("turf-wars"), "/play/turf-wars");
-  assert.equal(gameRoute("guess-the-t"), "/play/guess-the-t");
-  assert.equal(gameRoute("stationle"), "/play/stationle");
+  assert.equal(gameRoute("t-guesser"), "/play/t-guesser");
+  assert.equal(gameRoute("stople"), "/play/stople");
   assert.equal(gameRoute("charlie-run"), "/play/charlie-run");
 });
 

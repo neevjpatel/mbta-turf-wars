@@ -5,11 +5,11 @@ A Boston transit themed collection of four games connected by an interactive tra
 ## Games
 
 - **Turf Wars** (`/play/turf-wars`): claim MBTA stops for a campus by answering trivia.
-- **Guess the T** (`/play/guess-the-t`): identify the nearest station to a Boston street photo.
-- **Stationle** (`/play/stationle`): use distance and direction clues to find a mystery station.
+- **T Guesser** (`/play/t-guesser`): identify the nearest station to a Boston street photo.
+- **Stople** (`/play/stople`): use distance and direction clues to find a mystery station.
 - **Charlie Run** (`/play/charlie-run`): an endless runner with campus and station scoring.
 
-The home menu presents these games through a train based navigation experience. `/geoguesser` redirects to Guess the T as a compatibility route.
+The home menu presents these games through a train based navigation experience. The former `/geoguesser`, `/play/guess-the-t`, and `/play/stationle` URLs redirect to their renamed game routes for compatibility.
 
 ## Project structure
 
